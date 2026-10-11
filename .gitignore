@@ -1,0 +1,22 @@
+# Personal data, secrets, state, briefs and logs (S-10, S-12). Never commit.
+data/
+
+# Environment and credential files
+.env
+.env.*
+*.pem
+client_secret*.json
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,27 @@
+[project]
+name = "assistant"
+version = "0.1.0"
+description = "Local personal assistant agent: read-only Google Calendar, local tasks, Apple Reminders (Phase 1)."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+assistant = "assistant.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/assistant"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pip-audit>=2.10.1",
+    "pytest>=9.1.1",
+]
