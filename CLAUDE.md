@@ -57,9 +57,10 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 
 - IMPLEMENTATION_PLAN.md: written (2026-10-10). 17 milestones (M0–M16) + 7-day live check; all four §4 decisions approved.
 - **Planning phase complete.**
+- **M0 · Project setup** built (2026-10-11), approved by the user: git repo (`main`), `.gitignore`, uv + Python 3.12.15 + `uv.lock`, Typer CLI skeleton, smoke tests, gitleaks pre-commit/pre-push hooks in `.githooks/` (`core.hooksPath`), pip-audit clean.
 
 **Next step**
-- M0 · Project setup (git, `.gitignore`, `uv` + lock file, gitleaks pre-commit/pre-push hooks, pip-audit). Ask before installing anything. Stop for review after M0.
+- M1 · Schemas, preferences, data folder.
 
 ## Open issues / verify during build
 

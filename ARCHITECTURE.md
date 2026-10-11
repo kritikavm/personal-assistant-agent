@@ -315,8 +315,10 @@ personal-assistant-agent/
 ├── README.md
 ├── pyproject.toml
 ├── uv.lock                       # pinned dependency versions (S-19)
+├── .python-version               # 3.12, used by uv
 ├── .gitignore                    # data/, secrets, logs
 ├── .gitleaks.toml                # secret scanning config, run by pre-commit and pre-push hooks (S-12)
+├── .githooks/                    # pre-commit + pre-push (gitleaks); enable with: git config core.hooksPath .githooks
 ├── src/assistant/
 │   ├── cli.py                    # commands, confirmations
 │   ├── guard.py                  # billing check, scope check, lock

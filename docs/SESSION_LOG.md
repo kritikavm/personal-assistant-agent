@@ -4,6 +4,29 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 ---
 
+## 2026-10-11
+
+**What we did**
+- Closed the session-2 open question: no-token row in the ARCHITECTURE failure table; "every commit and before every push" in PRD S-12, SECURITY §5/§9, ARCHITECTURE §9/§11.
+- M0 · Project setup. With the user's approval, installed `uv` 0.13.0 and `gitleaks` 8.30.1 (Homebrew), Python 3.12.15 (uv), `typer` (runtime), and `pytest` and `pip-audit` (dev).
+- Created the git repo (`main`), `.gitignore`, `pyproject.toml`, `.python-version`, `uv.lock`, `src/assistant/` (Typer CLI: `--help`, `version`), `tests/test_smoke.py`, `.gitleaks.toml`, and `.githooks/pre-commit` and `pre-push` (via `core.hooksPath`).
+- Checks: pytest 2/2; `pip-audit --skip-editable` found no known vulnerabilities; `gitleaks dir` and `gitleaks git` found no leaks; the pre-commit hook blocked a fake secret; `data/` is ignored. Initial commit `5c037f9`.
+
+**Decisions made**
+- Hooks live in a versioned `.githooks/` folder, enabled with `git config core.hooksPath .githooks`. This must be re-run after a fresh clone (README, M16).
+
+**Files changed**
+- New: `.gitignore`, `.gitleaks.toml`, `.githooks/*`, `.python-version`, `pyproject.toml`, `uv.lock`, `src/assistant/__init__.py`, `src/assistant/cli.py`, `tests/test_smoke.py`.
+- Updated: `PRD.md`, `SECURITY.md`, `ARCHITECTURE.md`, `CLAUDE.md`, this log.
+
+**Open questions**
+- ~~`.githooks/` and `.python-version` not in the ARCHITECTURE §9 folder plan.~~ Closed: added after user review. The user also approved `--skip-editable` and keeping the `version` command.
+
+**Next step**
+- User reviews M0, then M1.
+
+---
+
 ## 2026-10-10 (session 2)
 
 **What we did**
