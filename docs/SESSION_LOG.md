@@ -4,6 +4,30 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 ---
 
+## 2026-10-14
+
+**What we did**
+- **Moved the project** from `~/Documents/VibeCoding` to `~/Developer/personal-assistant-agent` (copied by the user). Reason: `~/Documents` is synced by iCloud Desktop & Documents, which would upload `data/` (tasks, briefs, logs, OAuth client file) off the Mac. Work happens only in the new folder from now on; the user will delete the old copy after M1 passes.
+- Rebuilt `.venv` with `uv sync` (Python 3.12.15). It wasn't copied. Cleared the stale `__pycache__`/`.pytest_cache`. `core.hooksPath` survived the copy.
+- Finished **M1 · Schemas, preferences, data folder**. Most of it was written at the end of the 2026-10-11 session but not logged: `schemas.py` (`Task`, `Preferences`), `config.py` (preferences loading with errors that name the field, `data/` helper with `700`/`600`, permission check), `examples/preferences.yaml` and `examples/tasks.json` (fake), and `assistant doctor`. Runtime deps `pydantic` and `pyyaml` were added then.
+- New, approved by the user: `doctor` warns if `data/` is inside an iCloud-synced folder (iCloud Drive, or `~/Desktop`/`~/Documents` when Desktop & Documents sync is on, detected by their links inside iCloud Drive). It's a warning and doesn't change the exit code. Added a "Project location" line to SECURITY.md §5.
+- Checks: pytest 59/59; `pip-audit --skip-editable` clean; `gitleaks dir` and `gitleaks git` clean; `doctor` creates `data/` and its subfolders as `700`, reports location OK and fails only because `data/preferences.yaml` doesn't exist yet (the user's M1 step).
+
+**Decisions made**
+- The project lives outside iCloud-synced folders, and `doctor` checks this.
+
+**Files changed**
+- New: `src/assistant/config.py`, `src/assistant/schemas.py`, `examples/preferences.yaml`, `examples/tasks.json`, `tests/test_config.py`, `tests/test_schemas.py`.
+- Updated: `pyproject.toml`, `uv.lock`, `src/assistant/cli.py`, `SECURITY.md`, `CLAUDE.md`, this log.
+
+**Open questions**
+- The location check is in SECURITY.md only. PRD S-10 and the ARCHITECTURE `doctor`/failure-table rows don't mention it yet. Should they?
+
+**Next step**
+- User reviews M1 (copies `examples/preferences.yaml` to `data/`, sets the time zone and times, runs `doctor`). Then M2.
+
+---
+
 ## 2026-10-11
 
 **What we did**

@@ -77,6 +77,7 @@ Reminder titles, notes and notification text can contain text from calendar invi
 - **Google OAuth token:** stored in the macOS Keychain via `keyring`, never in files or the repo (S-10).
 - **Google OAuth client file** (the "client secret" JSON downloaded from Google Cloud): stored at `data/secrets/google_oauth_client.json`, permission `600`, gitignored, never committed (S-10).
 - **File permissions:** `data/` and its subfolders are `700` and every file in them is `600`, readable only by my macOS user. Code creates files with these modes, and `doctor` warns if anything is looser (S-10).
+- **Project location:** the project (and so `data/`) must not live in an iCloud-synced folder (iCloud Drive, or `~/Desktop`/`~/Documents` with Desktop & Documents sync on), so tasks, briefs, logs and the OAuth client file don't sync off the Mac. `doctor` warns if it does. The project lives in `~/Developer` (moved from `~/Documents` on 2026-10-14).
 - **Claude login:** handled by Claude Code's own login. The project stores no Claude credentials.
 - **Gitignored:** `data/` (preferences, tasks, completed tasks, backups, state, briefs, logs, `secrets/`) and `.env`-style files. The repo ships only fake sample data in `examples/` (S-12).
 - **Secret scanning:** `gitleaks` runs on every commit and before every push (git pre-commit and pre-push hooks) and blocks the commit or push if it finds a secret (S-12).
