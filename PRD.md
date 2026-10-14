@@ -195,6 +195,7 @@ quiet_hours:                       # no reminders fire in this window
   - OAuth tokens are stored in the macOS Keychain, not in plain files or the repo.
   - The Google OAuth client secret file is stored in `data/secrets/` (gitignored, permission `600`) and is never committed.
   - The `data/` folder and its subfolders are `700` and their files `600`, readable only by me. `doctor` warns if anything is looser.
+  - The project (and so `data/`) lives outside iCloud-synced folders (iCloud Drive, or `~/Desktop`/`~/Documents` with Desktop & Documents sync on), so local data doesn't sync off the Mac. `doctor` warns if it is inside one.
 - **S-11** Only the data needed for a request is sent to Claude, and only via the Agent SDK. No other third-party services.
 - **S-12** Secrets and personal data files are git-ignored. The repo ships with sample/fake data only. Secret scanning (`gitleaks`) runs on every commit and before every push, and blocks it if a secret is found.
 - **S-13** Logs store actions, IDs, statuses and errors only: no event titles, task text, descriptions, questions, answers or brief content. Validation errors are logged as field paths, not values. Logs and saved briefs are kept for 30 days, then deleted automatically.

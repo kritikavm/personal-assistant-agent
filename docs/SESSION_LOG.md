@@ -21,7 +21,7 @@ Newest entry at the top. No secrets, tokens or personal data.
 - Updated: `pyproject.toml`, `uv.lock`, `src/assistant/cli.py`, `SECURITY.md`, `CLAUDE.md`, this log.
 
 **Open questions**
-- The location check is in SECURITY.md only. PRD S-10 and the ARCHITECTURE `doctor`/failure-table rows don't mention it yet. Should they?
+- ~~The location check is in SECURITY.md only.~~ Closed: after the user verified and approved M1 (commit `54a9201`), it was added to PRD S-10 and to the ARCHITECTURE `doctor` row and failure table.
 
 **Next step**
 - User reviews M1 (copies `examples/preferences.yaml` to `data/`, sets the time zone and times, runs `doctor`). Then M2.

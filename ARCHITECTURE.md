@@ -10,7 +10,7 @@ Requirement IDs (FR-x, S-x) refer to PRD.md.
 
 | Component | What it is | Responsibility |
 |---|---|---|
-| **CLI** | Python entry point `assistant` | Commands: `run now [--dry-run]`, `run scheduled`, `add "<text>" [--yes]`, `ask "<question>"`, `tasks list/done/edit/delete`, `auth google`, `schedule install/uninstall`, `doctor`. Runs startup checks, owns human confirmations. `doctor` also warns if the installed launchd time differs from `morning_brief.time` or if `data/` permissions are looser than `700`/`600` (S-10), and reports when reminder writes are blocked (access denied, list missing, or list not On My Mac, S-14). |
+| **CLI** | Python entry point `assistant` | Commands: `run now [--dry-run]`, `run scheduled`, `add "<text>" [--yes]`, `ask "<question>"`, `tasks list/done/edit/delete`, `auth google`, `schedule install/uninstall`, `doctor`. Runs startup checks, owns human confirmations. `doctor` also warns if the installed launchd time differs from `morning_brief.time` or if `data/` permissions are looser than `700`/`600` or `data/` is inside an iCloud-synced folder (S-10), and reports when reminder writes are blocked (access denied, list missing, or list not On My Mac, S-14). |
 | **Startup guard** | Plain Python | Billing check (S-7), calendar scope check (S-2), preferences validation (§8), single-run lock. Runs before any AI call. |
 | **Agent runner** | Claude Agent SDK (Python) | Builds a session for each flow with its system prompt, tool allowlist, permission hook and step limit. Collects the structured result. |
 | **Tool server** | In-process SDK MCP server (`create_sdk_mcp_server`) named `pa` | The only tools Claude can call (§3). Thin wrappers over the clients below. |
@@ -299,6 +299,7 @@ Plain code only, no AI. Same validation, backup and atomic write path.
 | Corrupt `tasks.json` | JSON/schema load error | Refuse to write. Point to the latest backup. Brief/Q&A report tasks as a data gap. |
 | Notification fails | `osascript` non-zero exit | Log and continue. The brief is still in the file and in Reminders. |
 | `data/` permissions too open (S-10) | `doctor` | Warning naming the path and expected mode. |
+| `data/` inside an iCloud-synced folder (S-10) | `doctor` checks iCloud Drive and synced `~/Desktop`/`~/Documents` | Warning naming the synced folder and telling me to move the project out (e.g. to `~/Developer`). |
 | Another run in progress | Lock held | Exit with "another run is in progress". |
 | Mac asleep at brief time (FR-12) | launchd | launchd runs the missed job at wake. `run scheduled` checks `last_runs` so it runs at most once per day. If the Mac was shut down, the run is missed; `run now` covers it. |
 | Brief time changed but schedule not reinstalled (FR-12) | `doctor` compares plist and preferences | Warning telling me to run `assistant schedule install`. |
