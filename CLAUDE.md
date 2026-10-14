@@ -60,10 +60,11 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - **Planning phase complete.**
 - **M0 · Project setup** built (2026-10-11), approved by the user: git repo (`main`), `.gitignore`, uv + Python 3.12.15 + `uv.lock`, Typer CLI skeleton, smoke tests, gitleaks pre-commit/pre-push hooks in `.githooks/` (`core.hooksPath`), pip-audit clean.
 
-- **M1 · Schemas, preferences, data folder** built (2026-10-14), awaiting the user's review: `schemas.py`, `config.py`, `examples/`, `doctor` (preferences, `data/` permissions, iCloud location). pytest 59/59.
+- **M1 · Schemas, preferences, data folder** built (2026-10-14), verified and approved by the user, committed `54a9201`: `schemas.py`, `config.py`, `examples/`, `doctor` (preferences, `data/` permissions, iCloud location). Location check added to PRD S-10 and ARCHITECTURE (`9d1cd4a`).
+- **M2 · Task store and manual task commands** built (2026-10-14), verified and approved by the user: `tasks_store.py`, `tasks list/done/edit/delete` (delete asks `[y/N]`). pytest 101/101.
 
 **Next step**
-- User reviews M1. Then M2 · Task store and manual task commands.
+- M3 · Logging, state and run lock.
 
 ## Open issues / verify during build
 

@@ -12,19 +12,28 @@ Newest entry at the top. No secrets, tokens or personal data.
 - Finished **M1 · Schemas, preferences, data folder**. Most of it was written at the end of the 2026-10-11 session but not logged: `schemas.py` (`Task`, `Preferences`), `config.py` (preferences loading with errors that name the field, `data/` helper with `700`/`600`, permission check), `examples/preferences.yaml` and `examples/tasks.json` (fake), and `assistant doctor`. Runtime deps `pydantic` and `pyyaml` were added then.
 - New, approved by the user: `doctor` warns if `data/` is inside an iCloud-synced folder (iCloud Drive, or `~/Desktop`/`~/Documents` when Desktop & Documents sync is on, detected by their links inside iCloud Drive). It's a warning and doesn't change the exit code. Added a "Project location" line to SECURITY.md §5.
 - Checks: pytest 59/59; `pip-audit --skip-editable` clean; `gitleaks dir` and `gitleaks git` clean; `doctor` creates `data/` and its subfolders as `700`, reports location OK and fails only because `data/preferences.yaml` doesn't exist yet (the user's M1 step).
+- The user copied preferences into `data/`, verified M1 (`doctor` all OK, exit 0) and approved it. Committed M1 (`54a9201`), then added the location check to PRD S-10 and the ARCHITECTURE `doctor` row and failure table (`9d1cd4a`).
+- Built **M2 · Task store and manual task commands** (no new installs): `tasks_store.py` (validated loads, atomic temp+fsync+rename writes at `600`, per-file backups keeping the last 20, completed move grouped by local date) and `tasks list/done/edit/delete`.
+- Fixed two bugs found while testing M2: `examples/tasks.json` had `created_at` dates later than today, so `tasks done` failed `updated_at >= created_at` (example dates moved to early October); and that failure leaked a raw pydantic error (now a clean `task: …` message).
+- Checks: pytest 101/101; `gitleaks dir` clean; end-to-end CLI run on a scratch copy of `data/` (list, done, edit, rejected edit, delete; files and backups `600`, folders `700`).
 
 **Decisions made**
 - The project lives outside iCloud-synced folders, and `doctor` checks this.
+- M2 choices (approved by the user): `tasks delete` asks `[y/N]` unless `--yes`; `tasks edit` takes one flag per field, with `--deadline none`, `--description ""` and `--minutes 0` clearing, a category from preferences only, and `done` refused (use `tasks done`); a deadline without an offset gets the preferences time zone; `done` writes `completed_tasks.json` first, so a crash between the two writes leaves the task in both files rather than neither; a `tasks.json` with done tasks or duplicate IDs counts as corrupt; a missing task file counts as empty.
 
 **Files changed**
 - New: `src/assistant/config.py`, `src/assistant/schemas.py`, `examples/preferences.yaml`, `examples/tasks.json`, `tests/test_config.py`, `tests/test_schemas.py`.
 - Updated: `pyproject.toml`, `uv.lock`, `src/assistant/cli.py`, `SECURITY.md`, `CLAUDE.md`, this log.
+- M2: new `src/assistant/tasks_store.py`, `tests/test_tasks_store.py`; updated `src/assistant/cli.py`, `src/assistant/config.py` (`format_validation_error` root label), `examples/tasks.json` (dates).
 
 **Open questions**
 - ~~The location check is in SECURITY.md only.~~ Closed: after the user verified and approved M1 (commit `54a9201`), it was added to PRD S-10 and to the ARCHITECTURE `doctor` row and failure table.
 
+- ~~ARCHITECTURE §6.4 doesn't mention the delete confirmation.~~ Closed: the user kept the `[y/N]` prompt; added to §6.4.
+- ~~No run lock until M3.~~ Closed: the user said that's fine.
+
 **Next step**
-- User reviews M1 (copies `examples/preferences.yaml` to `data/`, sets the time zone and times, runs `doctor`). Then M2.
+- The user verified M2 on real `data/` (list, done, completed file, modes, pytest 101/101) and approved it. Then M3.
 
 ---
 

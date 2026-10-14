@@ -265,7 +265,7 @@ The new task gets reminders at the next daily run (or `run now`). `add` itself d
 5. For each queued change: show it and ask `Apply? [y/N]` (default No). On yes, the task store writes it (complete → move to `completed_tasks.json`, FR-11a). Otherwise nothing is written (FR-21).
 
 ### 6.4 Manual task commands (`tasks done/edit/delete`)
-Plain code only, no AI. Same validation, backup and atomic write path.
+Plain code only, no AI. Same validation, backup and atomic write path. `tasks delete` shows the task and asks `Delete …? [y/N]` (default No) unless `--yes` is given.
 
 ## 7. Permission boundaries
 
