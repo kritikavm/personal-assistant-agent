@@ -44,6 +44,7 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - The morning brief also shows as a macOS notification. A failed scheduled run shows a failure notification.
 - Dry run writes only a log line marked `dry_run`.
 - If the calendar is unavailable, existing meeting and birthday reminders are kept.
+- Invalid `state.json` (FR-23a): block all Reminders writes like FR-23, copy the bad file to `backups/`, still write the brief, show the reason in the brief and `doctor`. Only `assistant state rebuild`, run and confirmed by the user, rebuilds from `[pa:]` markers. Never rebuild automatically.
 - Tech stack: Python 3.12, `uv`, Typer, pydantic v2, `google-api-python-client`, `google-auth-oauthlib`, `keyring`, PyYAML.
 - S-9 resolved: the user confirmed via Anthropic's help center that Agent SDK usage draws from subscription limits. The billing startup check stays.
 
@@ -63,8 +64,10 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - **M1 · Schemas, preferences, data folder** built (2026-10-14), verified and approved by the user, committed `54a9201`: `schemas.py`, `config.py`, `examples/`, `doctor` (preferences, `data/` permissions, iCloud location). Location check added to PRD S-10 and ARCHITECTURE (`9d1cd4a`).
 - **M2 · Task store and manual task commands** built (2026-10-14), verified and approved by the user: `tasks_store.py`, `tasks list/done/edit/delete` (delete asks `[y/N]`). pytest 101/101.
 
+- **M3 · Logging, state and run lock** built (2026-10-14), verified and approved by the user, committed `79966c7`: `logging_setup.py` (per-key log allowlist, 30-day retention), `state.py`, `guard.py` (`run_lock`). Task commands log and take the lock. pytest 146/146. Docs updated for the lock, `last_runs` statuses and FR-23a.
+
 **Next step**
-- M3 · Logging, state and run lock.
+- M4 · Fixtures and fake clients.
 
 ## Open issues / verify during build
 
@@ -73,6 +76,7 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - [ ] Whether the SDK saves session transcripts under `~/.claude/`, and if so, turn it off or document it (S-16, SECURITY §5/§8).
 - [ ] How to create an On My Mac Reminders list when iCloud Reminders is on, and how AppleScript reports a list's account (for the S-14 `doctor` check).
 - [ ] The Keychain item's service name, to fill in the kill-switch steps (SECURITY §8).
+- [ ] Real Google event IDs (incl. birthdays and recurring instances) and Reminders IDs match the log formats in `logging_setup.py` (M13, M14). Otherwise they are silently dropped from logs.
 - [ ] How the birthdays calendar is resolved (birthday event type on primary vs a separate calendar ID).
 - [ ] Reminders AppleScript: create/update/delete by ID works under launchd, and the permission prompts.
 - [ ] launchd catch-up behaviour after sleep; Keychain access from a LaunchAgent.

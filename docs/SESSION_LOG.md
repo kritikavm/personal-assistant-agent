@@ -16,6 +16,16 @@ Newest entry at the top. No secrets, tokens or personal data.
 - Built **M2 · Task store and manual task commands** (no new installs): `tasks_store.py` (validated loads, atomic temp+fsync+rename writes at `600`, per-file backups keeping the last 20, completed move grouped by local date) and `tasks list/done/edit/delete`.
 - Fixed two bugs found while testing M2: `examples/tasks.json` had `created_at` dates later than today, so `tasks done` failed `updated_at >= created_at` (example dates moved to early October); and that failure leaked a raw pydantic error (now a clean `task: …` message).
 - Checks: pytest 101/101; `gitleaks dir` clean; end-to-end CLI run on a scratch copy of `data/` (list, done, edit, rejected edit, delete; files and backups `600`, folders `700`).
+- The user verified M2 on real `data/` and approved it with all four choices; the delete confirmation was added to ARCHITECTURE §6.4. Committed M2 (`b21386e`) and docs (`ec4b6fb`).
+- Built **M3 · Logging, state and run lock** (no new installs):
+  - `logging_setup.py`: `RunLog` writes `logs/YYYY-MM-DD.jsonl` (local date, `600`). Every field is checked against a per-key format (IDs, snake_case names, counts, field-name lists), so free text can't fit; anything else is dropped and counted in `redacted`. Errors are logged by exception class name only. Entering a run deletes logs and briefs older than 30 days, by the date in the file name.
+  - `state.py`: `State` schema (`schema_version` 1, `reminders` keyed `source_type:source_id:fire_at` and checked against each record, unique `reminder_id`s, `last_runs` scheduled/manual with status `ok`/`partial`/`failed`), strict load, atomic `600` save. Error messages give field paths with dict keys masked, never values.
+  - `guard.py`: `run_lock` (non-blocking `fcntl.flock` on `data/.run.lock`, `600`; the OS frees it if the process dies).
+  - Task commands now log as flows `tasks.list/done/edit/delete`. The write commands hold the run lock; `delete` asks before taking it.
+- Fixed while testing: `RunLog.event(name, event=…)` clashed with the parameter, and callers could overwrite `run_id`/`flow`. The name is now positional-only and the logger's own fields win.
+- Checks: pytest 146/146 (new `test_logging.py`, `test_state.py`, `test_guard.py`); canary (`CANARY-…`, lowercase, sentence form) passed through every log key, `error()`, status and an escaping exception, and through the real CLI, never appears in a log; a second process can't take the lock; `gitleaks dir` clean; demo on a scratch `data/` copy.
+- The user verified M3 on real `data/` (45 M3 tests, `tasks list`, log lines with IDs/counts/status only) and approved it. Committed M3 (`79966c7`).
+- Applied the user's M3 answers: ARCHITECTURE now covers the task-command lock and logging (§5 table, guard row, §6.4) and the `last_runs` statuses `ok`/`partial`/`failed` (§5). New PRD **FR-23a** and ARCHITECTURE §6.1 preflight, new §6.5 and a failure-table row: an invalid `state.json` blocks all Reminders writes like FR-23, a copy goes to `backups/`, the brief is still written, the reason shows in the brief and `doctor`, and only `assistant state rebuild` (run and confirmed by the user) rebuilds it from the `[pa:]` markers.
 
 **Decisions made**
 - The project lives outside iCloud-synced folders, and `doctor` checks this.
@@ -25,15 +35,19 @@ Newest entry at the top. No secrets, tokens or personal data.
 - New: `src/assistant/config.py`, `src/assistant/schemas.py`, `examples/preferences.yaml`, `examples/tasks.json`, `tests/test_config.py`, `tests/test_schemas.py`.
 - Updated: `pyproject.toml`, `uv.lock`, `src/assistant/cli.py`, `SECURITY.md`, `CLAUDE.md`, this log.
 - M2: new `src/assistant/tasks_store.py`, `tests/test_tasks_store.py`; updated `src/assistant/cli.py`, `src/assistant/config.py` (`format_validation_error` root label), `examples/tasks.json` (dates).
+- M3 (uncommitted, awaiting review): new `src/assistant/logging_setup.py`, `state.py`, `guard.py`, `tests/test_logging.py`, `test_state.py`, `test_guard.py`; updated `src/assistant/cli.py`.
 
 **Open questions**
 - ~~The location check is in SECURITY.md only.~~ Closed: after the user verified and approved M1 (commit `54a9201`), it was added to PRD S-10 and to the ARCHITECTURE `doctor` row and failure table.
-
 - ~~ARCHITECTURE §6.4 doesn't mention the delete confirmation.~~ Closed: the user kept the `[y/N]` prompt; added to §6.4.
 - ~~No run lock until M3.~~ Closed: the user said that's fine.
+- ~~M3, for the user: (1) task write commands now take the run lock and every task command logs. ARCHITECTURE lists `.run.lock` under the startup guard and §6.4 doesn't mention either. Add them? (2) `last_runs` status values `ok`/`partial`/`failed` aren't in ARCHITECTURE §5. Add them? (3) There's no failure-table row for an invalid `state.json`. M3 rejects it; what should a run do then (stop, or skip reminder writes like FR-23 and suggest a rebuild from `[pa:]` markers)? Needed by M5/M10.~~ Closed: all three answered and applied (FR-23a, ARCHITECTURE §5/§6.1/§6.4/§6.5/§8).
+- EVALS §4.8 ("delete the fake `state.json` and run again → state is rebuilt from the markers") and plan M5 ("`[pa:<key>]` marker and state rebuild") assume an automatic rebuild when `state.json` is **missing**. That conflicts with "never rebuild automatically". A missing file is valid (fresh start), so a run would recreate every reminder and duplicate the ones already in the list. Proposal: a missing `state.json` while the list holds `[pa:]` items is handled like FR-23a (block writes, point to `state rebuild`); EVALS §4.8 becomes "run `state rebuild`, confirm, run again → no duplicates". Not changed yet.
+- The `[pa:<key>]` marker holds only the key, so a rebuild can't recover `kind` (default/extra). Proposal: the marker becomes `[pa:<kind>:<key>]`. `title` comes from the reminder and `content_hash` is recomputed. Not changed yet.
+- Plan: `state rebuild` fits M5 (logic and CLI on the fake Reminders client), with the real list at M14. Not changed yet.
 
 **Next step**
-- The user verified M2 on real `data/` (list, done, completed file, modes, pytest 101/101) and approved it. Then M3.
+- M4 · Fixtures and fake clients. Stop for review after it.
 
 ---
 

@@ -10,8 +10,8 @@ Requirement IDs (FR-x, S-x) refer to PRD.md.
 
 | Component | What it is | Responsibility |
 |---|---|---|
-| **CLI** | Python entry point `assistant` | Commands: `run now [--dry-run]`, `run scheduled`, `add "<text>" [--yes]`, `ask "<question>"`, `tasks list/done/edit/delete`, `auth google`, `schedule install/uninstall`, `doctor`. Runs startup checks, owns human confirmations. `doctor` also warns if the installed launchd time differs from `morning_brief.time` or if `data/` permissions are looser than `700`/`600` or `data/` is inside an iCloud-synced folder (S-10), and reports when reminder writes are blocked (access denied, list missing, or list not On My Mac, S-14). |
-| **Startup guard** | Plain Python | Billing check (S-7), calendar scope check (S-2), preferences validation (§8), single-run lock. Runs before any AI call. |
+| **CLI** | Python entry point `assistant` | Commands: `run now [--dry-run]`, `run scheduled`, `add "<text>" [--yes]`, `ask "<question>"`, `tasks list/done/edit/delete`, `state rebuild`, `auth google`, `schedule install/uninstall`, `doctor`. Runs startup checks, owns human confirmations. `doctor` also warns if the installed launchd time differs from `morning_brief.time` or if `data/` permissions are looser than `700`/`600` or `data/` is inside an iCloud-synced folder (S-10), and reports when reminder writes are blocked (access denied, list missing, list not On My Mac, S-14, or `state.json` invalid, FR-23a). |
+| **Startup guard** | Plain Python | Billing check (S-7), calendar scope check (S-2), preferences validation (§8), single-run lock (also taken by the task write commands, §6.4). Runs before any AI call. |
 | **Agent runner** | Claude Agent SDK (Python) | Builds a session for each flow with its system prompt, tool allowlist, permission hook and step limit. Collects the structured result. |
 | **Tool server** | In-process SDK MCP server (`create_sdk_mcp_server`) named `pa` | The only tools Claude can call (§3). Thin wrappers over the clients below. |
 | **Calendar client** | Google Calendar API v3, read-only credentials | `events.list` / `events.get` only (S-2). |
@@ -161,13 +161,13 @@ The current time is passed in the system prompt, not via a tool.
 | `tasks.json` | Open tasks `[Task]` | Task store |
 | `completed_tasks.json` | `{"YYYY-MM-DD": [Task]}` (FR-11a) | Task store |
 | `backups/` | Timestamped copy before each task-file write; keep last 20 | Task store |
-| `state.json` | `reminders: {key → {reminder_id, title, fire_at, source_type, source_id, kind, content_hash}}`, `last_runs: {scheduled: {date, status}, manual: {…}}`, `schema_version` | Reconciler, runner |
+| `state.json` | `reminders: {key → {reminder_id, title, fire_at, source_type, source_id, kind, content_hash}}`, `last_runs: {scheduled: {date, status}, manual: {…}}` with `status` one of `ok`, `partial` (finished with a data gap, e.g. calendar or Reminders unavailable) or `failed`, `schema_version` | Reconciler, runner, `state rebuild` |
 | `briefs/YYYY-MM-DD.md` | Rendered morning brief (latest run of the day overwrites). Files older than 30 days are deleted at the start of each run (S-13). | Daily run |
 | `logs/YYYY-MM-DD.jsonl` | One JSON line per event: run start/end, step, tool call, reminder change, error. IDs, statuses, counts and error codes only; no titles, task text or descriptions (S-13). Files older than 30 days are deleted at the start of each run. | Every flow |
 | `secrets/google_oauth_client.json` | Google OAuth client secret file (S-10). Never committed. | Me (one-time setup) |
-| `.run.lock` | `fcntl` lock so a manual and a scheduled run can't overlap | Startup guard |
+| `.run.lock` | `fcntl` lock so runs, task write commands and `state rebuild` can't overlap | Startup guard, task write commands, `state rebuild` |
 
-- **Reminder key** = `source_type:source_id:fire_at` (FR-15). Each reminder's notes field also carries a marker `[pa:<key>]`, so if `state.json` is lost, code can rebuild it from "Agent Reminders" alone.
+- **Reminder key** = `source_type:source_id:fire_at` (FR-15). Each reminder's notes field also carries a marker `[pa:<key>]`, so `assistant state rebuild` can rebuild `state.json` from "Agent Reminders" alone (§6.5).
 - **Google OAuth token:** macOS Keychain via `keyring` (S-10), never in `data/`.
 - **Permissions:** `data/` and its subfolders are created `700`, every file `600` (atomic writes keep the mode). `doctor` warns if anything is looser (S-10).
 - **Agent SDK session history:** to be checked during the build (S-16). If the SDK saves transcripts under `~/.claude/`, turn that off if possible; otherwise record the location in SECURITY.md §8.
@@ -178,6 +178,7 @@ The current time is passed in the system prompt, not via a tool.
 
 1. **Guard:** take the lock → billing check → load and validate preferences → scope check on the Google token. `run scheduled` exits quietly if today's scheduled run already succeeded. `run now` always runs.
 2. **Preflight Reminders:** check Reminders access, that "Agent Reminders" exists, and that it belongs to the On My Mac account (S-14). If any check fails, set `reminders_blocked` with the reason (FR-23), add the reason to `brief.data_gaps`, and continue so the brief still gets written.
+   - Also load `state.json`. If it's invalid (FR-23a), copy it to `backups/state-invalid-<time>.json` (once per distinct bad file), set `reminders_blocked` with reason "state invalid", and add it to `brief.data_gaps`. `state.json` isn't written this run (so `last_runs` isn't updated either). Nothing is rebuilt automatically.
 3. **Agent session (`run`):** Claude calls `get_preferences`, `get_tasks`, `get_calendar_events` (today…+7), `get_default_reminders`, `find_free_time` (today), then `submit_daily_plan` with the brief and any extra reminders.
 4. **Build the plan (planner):**
    - **Defaults (code):** compute from preferences and the data snapshot: meetings 1 h before; tasks on the morning of the due day and 1 h before the deadline; birthdays at 20:00 the evening before; plus the brief item (`source_type: brief`) at today's brief time, or now + 1 min on a later manual run. Marked `kind: default`.
@@ -267,6 +268,17 @@ The new task gets reminders at the next daily run (or `run now`). `add` itself d
 ### 6.4 Manual task commands (`tasks done/edit/delete`)
 Plain code only, no AI. Same validation, backup and atomic write path. `tasks delete` shows the task and asks `Delete …? [y/N]` (default No) unless `--yes` is given.
 
+- **Lock:** `done`, `edit` and `delete` hold the run lock while they write, so they can't overlap a run. `delete` asks its question before taking the lock. `tasks list` only reads and takes no lock.
+- **Logging:** every task command writes a run log with flow `tasks.list`/`tasks.done`/`tasks.edit`/`tasks.delete`: task IDs, edited field names, counts and error codes only (S-13).
+
+### 6.5 State rebuild (`state rebuild`)
+Plain code only, no AI. Run only by me, never automatically (FR-23a).
+
+1. Take the run lock.
+2. Read "Agent Reminders" and collect items whose notes carry a `[pa:<key>]` marker. Items without a marker are ignored and never touched.
+3. Show what the new state would hold (counts by `source_type`) and ask `Rebuild state.json? [y/N]` (default No).
+4. On yes: copy the current `state.json` (if any) to `backups/`, then write the rebuilt state atomically. `last_runs` starts empty. Log the counts.
+
 ## 7. Permission boundaries
 
 | Layer | Mechanism | Enforces |
@@ -296,6 +308,7 @@ Plain code only, no AI. Same validation, backup and atomic write path. `tasks de
 | Step limit reached | SDK `max_turns` result | Same as malformed: fail cleanly, no writes. |
 | Tool outside allowlist (S-5) | Permission hook | Denied, logged. Session continues; the model sees the denial. |
 | Invalid preferences (§8) | Pydantic validation | Refuse to start, name the field and value. |
+| Invalid `state.json` (FR-23a, S-17) | JSON/schema load error | Same as a blocked list: no Reminders writes and `state.json` isn't written. The bad file is copied to `backups/`. The brief is still written, and the reason is in the brief (`data_gaps`) and in `doctor`, with the fix (`assistant state rebuild`). Never rebuilt automatically. |
 | Corrupt `tasks.json` | JSON/schema load error | Refuse to write. Point to the latest backup. Brief/Q&A report tasks as a data gap. |
 | Notification fails | `osascript` non-zero exit | Log and continue. The brief is still in the file and in Reminders. |
 | `data/` permissions too open (S-10) | `doctor` | Warning naming the path and expected mode. |
