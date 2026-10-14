@@ -1,10 +1,14 @@
 """Command-line entry point."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import date, datetime
 
 import typer
 
 from assistant import __version__, config
+from assistant.guard import RunLockedError, run_lock
+from assistant.logging_setup import RunLog
 from assistant.schemas import Preferences, Priority, Task, TaskStatus
 from assistant.tasks_store import TaskStore, TaskStoreError, parse_deadline
 
@@ -83,6 +87,25 @@ def _open_store() -> tuple[TaskStore, Preferences]:
     return TaskStore(data_dir, prefs.tz), prefs
 
 
+@contextmanager
+def _task_session(flow: str, lock: bool = True) -> Iterator[tuple[TaskStore, Preferences, RunLog]]:
+    """Open the store, log the command (FR-26) and, for writes, hold the run lock."""
+    store, prefs = _open_store()
+    with RunLog(store.data_dir, flow, prefs.tz) as log:
+        try:
+            if lock:
+                with run_lock(store.data_dir):
+                    yield store, prefs, log
+            else:
+                yield store, prefs, log
+        except TaskStoreError as e:
+            log.error(e)
+            raise _fail(e.problems) from None
+        except RunLockedError as e:
+            log.error(e)
+            raise _fail([str(e)]) from None
+
+
 def _deadline_text(deadline: date | datetime | None, tz) -> str:
     if deadline is None:
         return "-"
@@ -112,11 +135,9 @@ def _describe(task: Task, tz) -> str:
 @tasks_app.command("list")
 def tasks_list() -> None:
     """List open tasks, soonest deadline first."""
-    store, prefs = _open_store()
-    try:
+    with _task_session("tasks.list", lock=False) as (store, prefs, log):
         tasks = store.load_open()
-    except TaskStoreError as e:
-        raise _fail(e.problems) from None
+        log.event("tasks_listed", count=len(tasks))
     if not tasks:
         typer.echo("No open tasks.")
         return
@@ -133,11 +154,9 @@ def tasks_list() -> None:
 @tasks_app.command("done")
 def tasks_done(task_id: str = typer.Argument(..., help="Task ID, e.g. t-0001")) -> None:
     """Mark a task done and move it to completed_tasks.json."""
-    store, prefs = _open_store()
-    try:
+    with _task_session("tasks.done") as (store, prefs, log):
         task = store.complete(task_id)
-    except TaskStoreError as e:
-        raise _fail(e.problems) from None
+        log.event("task_completed", task_id=task.id)
     typer.echo(f"Done: {_describe(task, prefs.tz)}")
     typer.echo(f"Moved to {store.completed_path.name} under {task.completed_at.astimezone(prefs.tz).date()}.")
 
@@ -154,9 +173,8 @@ def tasks_edit(
     minutes: int | None = typer.Option(None, help="Estimated minutes (0 clears it)."),
 ) -> None:
     """Change fields of an open task. The change is validated before anything is written."""
-    store, prefs = _open_store()
     changes: dict = {}
-    try:
+    with _task_session("tasks.edit") as (store, prefs, log):
         if title is not None:
             changes["title"] = title
         if description is not None:
@@ -172,8 +190,7 @@ def tasks_edit(
         if minutes is not None:
             changes["estimated_minutes"] = minutes or None
         task = store.edit(task_id, changes, categories=prefs.categories)
-    except TaskStoreError as e:
-        raise _fail(e.problems) from None
+        log.event("task_updated", task_id=task.id, fields=sorted(changes))
     typer.echo(f"Updated: {_describe(task, prefs.tz)}")
 
 
@@ -183,17 +200,17 @@ def tasks_delete(
     yes: bool = typer.Option(False, "--yes", "-y", help="Don't ask for confirmation."),
 ) -> None:
     """Delete an open task (a backup of tasks.json is kept)."""
-    store, prefs = _open_store()
-    try:
-        tasks = store.load_open()
-    except TaskStoreError as e:
-        raise _fail(e.problems) from None
-    match = next((t for t in tasks if t.id == task_id), None)
-    if match and not yes and not typer.confirm(f"Delete {_describe(match, prefs.tz)}?", default=False):
-        typer.echo("Not deleted.")
-        return
-    try:
+    # Ask before taking the lock, so a waiting prompt doesn't block a scheduled run.
+    if not yes:
+        store, prefs = _open_store()
+        try:
+            match = next((t for t in store.load_open() if t.id == task_id), None)
+        except TaskStoreError as e:
+            raise _fail(e.problems) from None
+        if match and not typer.confirm(f"Delete {_describe(match, prefs.tz)}?", default=False):
+            typer.echo("Not deleted.")
+            return
+    with _task_session("tasks.delete") as (store, prefs, log):
         task = store.delete(task_id)
-    except TaskStoreError as e:
-        raise _fail(e.problems) from None
+        log.event("task_deleted", task_id=task.id)
     typer.echo(f"Deleted: {_describe(task, prefs.tz)}")
