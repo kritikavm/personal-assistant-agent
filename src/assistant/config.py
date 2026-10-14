@@ -98,11 +98,13 @@ class PreferencesError(Exception):
         super().__init__("; ".join(problems))
 
 
-def format_validation_error(err: ValidationError) -> list[str]:
-    """Turn pydantic errors into "field.path: message (got value)" lines."""
+def format_validation_error(err: ValidationError, root: str = "(file)") -> list[str]:
+    """Turn pydantic errors into "field.path: message (got value)" lines.
+
+    `root` names errors that aren't about one field (whole-object rules)."""
     lines = []
     for e in err.errors():
-        field = ".".join(str(part) for part in e["loc"]) or "(file)"
+        field = ".".join(str(part) for part in e["loc"]) or root
         message = e["msg"].removeprefix("Value error, ")
         got = e.get("input")
         shown = "" if isinstance(got, (dict, list)) or e["type"] == "missing" else f" (got {got!r})"
