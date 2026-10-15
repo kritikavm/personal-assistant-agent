@@ -179,21 +179,22 @@ The current time is passed in the system prompt, not via a tool.
 1. **Guard:** take the lock → billing check → load and validate preferences → scope check on the Google token. `run scheduled` exits quietly if today's scheduled run already succeeded. `run now` always runs.
 2. **Preflight Reminders:** check Reminders access, that "Agent Reminders" exists, and that it belongs to the On My Mac account (S-14). If any check fails, set `reminders_blocked` with the reason (FR-23), add the reason to `brief.data_gaps`, and continue so the brief still gets written.
    - Also load `state.json`. If it's invalid (FR-23a), copy it to `backups/state-invalid-<time>.json` (once per distinct bad file), set `reminders_blocked` with reason "state invalid", and add it to `brief.data_gaps`. `state.json` isn't written this run (so `last_runs` isn't updated either). Nothing is rebuilt automatically.
-   - If `state.json` is missing and "Agent Reminders" already holds items with a `[pa:]` marker, do the same (reason "state missing", no copy to back up). If the list holds no marked items, start with empty state.
+   - If `state.json` is missing and "Agent Reminders" already holds items with a `[pa:]` marker, do the same (reason "state missing", no copy to back up). If the list holds no marked items, start with empty state. If the list can't be read, a missing `state.json` also blocks writes and isn't written.
 3. **Agent session (`run`):** Claude calls `get_preferences`, `get_tasks`, `get_calendar_events` (today…+7), `get_default_reminders`, `find_free_time` (today), then `submit_daily_plan` with the brief and any extra reminders.
 4. **Build the plan (planner):**
-   - **Defaults (code):** compute from preferences and the data snapshot: meetings 1 h before; tasks on the morning of the due day and 1 h before the deadline; birthdays at 20:00 the evening before; plus the brief item (`source_type: brief`) at today's brief time, or now + 1 min on a later manual run. Marked `kind: default`.
-   - **Extras (AI):** drop any with `fire_at` in the past or beyond the 7-day window, unknown `source_id`s, or duplicates of a default. Keep at most `max_per_item` per source item (FR-18). Marked `kind: extra`.
-   - **Quiet hours (all reminders):** a reminder inside quiet hours moves to the end of quiet hours if that's still before its event or deadline; otherwise to just before quiet hours start (PRD §8).
+   - **Defaults (code):** compute from preferences and the data snapshot: meetings 1 h before; tasks on the morning of the due day and 1 h before the deadline; birthdays at 20:00 the evening before; plus the brief item (`source_type: brief`) at today's brief time, or now + 1 min on a later manual run. Marked `kind: default`. A default whose time has already passed is skipped (the brief covers the item), e.g. a 09:00 meeting at the 08:00 run.
+   - **Extras (AI):** drop any with `fire_at` in the past or beyond the 7-day window, unknown `source_id`s, ones at or after their own event start or deadline, or duplicates of a default. Keep at most `max_per_item` per source item (FR-18). Marked `kind: extra`. The `reason` isn't written to Reminders; the notes hold only the marker.
+   - **Quiet hours (all reminders):** a reminder inside quiet hours moves to the end of quiet hours if that's still before its event or deadline; otherwise to just before quiet hours start (PRD §8). If that time has already passed (e.g. a manual run at 23:00 for a 06:30 event), the reminder is skipped.
    - If calendar data was missing, make sure `brief.data_gaps` says so (FR-22).
 5. **Reconcile** against `state.json`, looking only at keys we created:
    - new key → create
    - same key with a changed title → update
+   - a deleted and a created reminder for the same item and kind are paired into one update, so a moved event or deadline moves its reminder (FR-15)
    - key no longer planned and still in the future (event moved or cancelled, task done) → delete
-   - past reminders → leave alone
+   - past reminders → leave alone in Reminders and drop from `state.json`
    - if calendar data is unavailable this run, existing `meeting` and `birthday` reminders are kept, not deleted (FR-22)
 6. **Write.** With `--dry-run`, this step only prints the brief and the diff and writes one log line marked `dry_run` (FR-13). Otherwise:
-   - Reminders changes, if not blocked.
+   - Reminders changes, if not blocked. A reminder I deleted by hand is recreated if it needs an update and just dropped from state if it needs deleting. If a write fails, the rest are skipped and `state.json` records only what was written.
    - `state.json`.
    - `briefs/YYYY-MM-DD.md`.
    - Notification with a neutral summary, counts only (S-15).
@@ -276,7 +277,7 @@ Plain code only, no AI. Same validation, backup and atomic write path. `tasks de
 Plain code only, no AI. Run only by me, never automatically (FR-23a).
 
 1. Take the run lock.
-2. Read "Agent Reminders" and collect items whose notes carry a `[pa:<kind>:<key>]` marker. Items without a marker are ignored and never touched.
+2. Read "Agent Reminders" and collect items whose notes carry a `[pa:<kind>:<key>]` marker. Items without a marker are ignored and never touched. If two items carry the same marker, one is kept and the other is left in the list and reported.
 3. Show what the new state would hold (counts by `source_type`) and ask `Rebuild state.json? [y/N]` (default No).
 4. On yes: copy the current `state.json` (if any) to `backups/`, then write the rebuilt state atomically. `last_runs` starts empty. Log the counts.
 

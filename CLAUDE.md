@@ -68,8 +68,10 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 
 - **M4 · Fixtures and fake clients** built (2026-10-14), approved: `integrations/` interfaces and stubs, `tests/fakes/` (calendar, Reminders, notifier, scenario loader), `evals/fixtures/` (base + 10 edge-case scenarios). pytest 196/196. Verified and approved by the user. Docs updated for missing `state.json`, the `[pa:<kind>:<key>]` marker and `state rebuild` in M5.
 
+- **M5 · Planner** built (2026-10-14), verified and approved by the user: `planner.py` (defaults, quiet hours, extras, reconcile, apply), `state.py` marker / `check_state` / rebuild, CLI `state rebuild`. pytest 294/294. The nine build choices are in ARCHITECTURE §6.1/§6.5.
+
 **Next step**
-- M5 · Planner: default reminders, quiet hours, reconcile, `state rebuild` (in progress).
+- M6 · Startup guard (in progress).
 
 ## Open issues / verify during build
 

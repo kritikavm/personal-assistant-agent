@@ -35,6 +35,13 @@ Newest entry at the top. No secrets, tokens or personal data.
 - Checks: pytest 196/196 (50 in `test_fakes.py`: interface signatures match for fakes and real stubs, product code never imports `tests.fakes`, clamp and day-7/day-8 edges, attendee and description stripping, birthday paths, blocked Reminders write nothing, every fixture validates, every §3.2 edge case is tagged and checked against the data, IDs match the log formats, gitleaks clean on fixtures). Four deliberate code mutations each made a test fail. `gitleaks dir` clean.
 - The user verified M4 (pytest 196/196) and approved it with answers to the open questions (below).
 
+- Committed M4 (`abb4f6f`) and the doc updates from the user's M4 answers (`d3a2e17`).
+- Built **M5 · Planner** (no new installs):
+  - `planner.py`: default reminders (meetings 1 h before; tasks morning-of and 1 h before a timed deadline; birthdays 20:00 the evening before; brief item at brief time or now + 1 min), quiet hours (both outcomes, wrapping or not), extras validation with drop codes, `reconcile` (create / update / delete / keep on outage / forget past) and `apply_diff`. Time math runs on real instants, so DST days are right.
+  - `state.py`: `[pa:<kind>:<key>]` marker and strict parser, `content_hash`, `check_state` (invalid → copy to `backups/state-invalid-*.json` once per distinct file and block; missing with marked items → block; missing with an empty list → fresh start), `plan_rebuild` / `write_rebuilt`.
+  - `schemas.py`: `ExtraReminderProposal`. `logging_setup.py`: brief source IDs (dates) and new counts allowed in logs.
+  - CLI `assistant state rebuild`: takes the lock, reads the list, shows counts by source type, asks `[y/N]`, backs up the current file, writes; logs counts only. With the real client it stops with "arrives in M14".
+- Checks: pytest 294/294 (98 in `test_planner.py`: 43 default-reminder cases, the exact base-fixture plan, extras drop codes, §4.8 repeat runs incl. the `moved_cancelled` fixture, calendar outage, safety test 7, missing/invalid state, rebuild and CLI). 11 deliberate code mutations each made a test fail. `gitleaks dir` clean. `state rebuild` run on a scratch data folder.
 **Decisions made**
 - The project lives outside iCloud-synced folders, and `doctor` checks this.
 - M2 choices (approved by the user): `tasks delete` asks `[y/N]` unless `--yes`; `tasks edit` takes one flag per field, with `--deadline none`, `--description ""` and `--minutes 0` clearing, a category from preferences only, and `done` refused (use `tasks done`); a deadline without an offset gets the preferences time zone; `done` writes `completed_tasks.json` first, so a crash between the two writes leaves the task in both files rather than neither; a `tasks.json` with done tasks or duplicate IDs counts as corrupt; a missing task file counts as empty.
@@ -52,8 +59,10 @@ Newest entry at the top. No secrets, tokens or personal data.
 - ~~M3, for the user: (1) task write commands now take the run lock and every task command logs. ARCHITECTURE lists `.run.lock` under the startup guard and §6.4 doesn't mention either. Add them? (2) `last_runs` status values `ok`/`partial`/`failed` aren't in ARCHITECTURE §5. Add them? (3) There's no failure-table row for an invalid `state.json`. M3 rejects it; what should a run do then (stop, or skip reminder writes like FR-23 and suggest a rebuild from `[pa:]` markers)? Needed by M5/M10.~~ Closed: all three answered and applied (FR-23a, ARCHITECTURE §5/§6.1/§6.4/§6.5/§8).
 - ~~Missing `state.json`, the `[pa:]` marker's `kind`, where `state rebuild` is built, a stored-brief injection case, and the base scenario's event count.~~ Closed by the user's M4 answers: a missing `state.json` while the list holds `[pa:]` items is handled like FR-23a, and an empty list starts fresh; the marker becomes `[pa:<kind>:<key>]`; `state rebuild` is built in M5 on the fake Reminders client (real list at M14); no stored-brief case, because nothing reads `briefs/` back (add one if that changes); EVALS §3.1 now says "about 20 events". Applied to PRD FR-23a, ARCHITECTURE §5/§6.1/§6.5/§8, EVALS §3.1/§4.8 and plan M5.
 
+- ~~M5: nine choices made while building.~~ Closed: the user verified M5 (pytest 98/98) and approved all nine; added to ARCHITECTURE §6.1 (move pairing, skipped past-due defaults, past reminders dropped from state, quiet-hours-into-past skip, `after_source`, unreadable list + missing state, hand-deleted reminders, write failure, `reason` not written) and §6.5 (duplicate markers).
+
 **Next step**
-- M5 · Planner (in progress).
+- M6 · Startup guard (in progress).
 
 ---
 
