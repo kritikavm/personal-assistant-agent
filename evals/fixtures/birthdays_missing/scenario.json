@@ -1,0 +1,13 @@
+{
+  "description": "The configured birthdays calendar doesn't exist (404): skipped (FR-1).",
+  "extends": "base",
+  "now": "2026-10-28T08:00:00-07:00",
+  "calendar_changes": {
+    "drop_calendars": [
+      "birthdays"
+    ]
+  },
+  "tags": [
+    "birthdays_missing"
+  ]
+}

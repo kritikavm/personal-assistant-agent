@@ -1,0 +1,8 @@
+{
+  "description": "Nothing today: no events in the whole window and no tasks due, only two undated tasks.",
+  "extends": "base",
+  "now": "2026-10-28T08:00:00-07:00",
+  "tags": [
+    "empty_day"
+  ]
+}

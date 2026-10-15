@@ -195,3 +195,41 @@ class Preferences(_Strict):
     @property
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.timezone)
+
+
+# --- Calendar (FR-1–FR-3, ARCHITECTURE §3 get_calendar_events) ----------------------------
+
+
+class CalendarEvent(_Strict):
+    """One event as the agent sees it. No attendees or descriptions (FR-2, S-13).
+
+    All-day events have `date` start/end with an exclusive end (as Google sends
+    them); timed events have offset-aware datetimes.
+    """
+
+    id: NonEmptyStr
+    calendar: NonEmptyStr
+    title: str
+    start: AwareDatetime | date
+    end: AwareDatetime | date
+    all_day: bool
+    location: str | None = None
+    is_birthday: bool = False
+
+    @model_validator(mode="after")
+    def _times_match_all_day(self) -> "CalendarEvent":
+        timed = [isinstance(v, datetime) for v in (self.start, self.end)]
+        if self.all_day and any(timed):
+            raise ValueError("all-day events have dates, not times")
+        if not self.all_day and not all(timed):
+            raise ValueError("timed events need a start and end time")
+        if self.end < self.start:
+            raise ValueError("end can't be before start")
+        return self
+
+
+class CalendarResult(_Strict):
+    available: bool
+    error: str | None = None
+    skipped_calendars: list[str] = []
+    events: list[CalendarEvent] = []

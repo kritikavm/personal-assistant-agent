@@ -1,0 +1,28 @@
+# Copy to data/preferences.yaml and edit (then: chmod 600 data/preferences.yaml).
+# Times are 24-hour and must be in quotes. Durations look like "60m" or "2h".
+timezone: America/Los_Angeles      # IANA zone
+morning_brief:
+  time: "08:00"
+working_hours:
+  start: "09:00"
+  end: "18:00"
+calendars:
+  - primary
+  - birthdays                      # used only if it exists; skipped otherwise
+reminders:
+  meetings:
+    before: 60m                    # 1 hour before start
+  tasks_with_deadline:
+    morning_of_due_day: "08:00"
+    before_deadline: 60m
+  birthdays:
+    evening_before: "20:00"
+  extra_reminders:
+    allowed: true                  # agent may add extras for important items
+    max_per_item: 2
+    examples: ["interviews get a reminder the day before"]
+categories: [shopping, job, plants, personal, errands]
+default_priority: medium
+quiet_hours:                       # no reminders fire in this window
+  start: "22:00"
+  end: "07:00"

@@ -1,0 +1,401 @@
+{
+  "primary": [
+    {
+      "id": "evt001",
+      "status": "confirmed",
+      "summary": "Weekly team sync",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-28T09:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-28T10:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "location": "Room Fern (fake)",
+      "attendees": [
+        {
+          "email": "sam.rivera@example.com",
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "dana.kim@example.com"
+        }
+      ],
+      "description": "Agenda doc: fake. Dial-in: 555-0100.",
+      "creator": {
+        "email": "dana.kim@example.com"
+      },
+      "htmlLink": "https://calendar.example.com/evt001"
+    },
+    {
+      "id": "evt002",
+      "status": "confirmed",
+      "summary": "Design review",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-28T10:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-28T11:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "attendees": [
+        {
+          "email": "sam.rivera@example.com",
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "dana.kim@example.com"
+        }
+      ]
+    },
+    {
+      "id": "evt003",
+      "status": "confirmed",
+      "summary": "Lunch with Sam Rivera",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-28T12:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-28T13:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "location": "Cafe Example, 1 Sample St"
+    },
+    {
+      "id": "evt004",
+      "status": "confirmed",
+      "summary": "Dentist appointment",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-28T15:30-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-28T16:15-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "location": "Example Dental",
+      "description": "Bring insurance card (fake)."
+    },
+    {
+      "id": "evt005",
+      "status": "confirmed",
+      "summary": "Quarterly planning workshop",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-29T09:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-29T12:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "evt006",
+      "status": "confirmed",
+      "summary": "Vendor call",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-29T12:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-29T13:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "evt007",
+      "status": "confirmed",
+      "summary": "Interview: Senior Analyst role (fake)",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-29T13:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-29T15:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "location": "Video call"
+    },
+    {
+      "id": "evt008",
+      "status": "confirmed",
+      "summary": "Project retro",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-29T15:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-29T18:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "evt009",
+      "status": "confirmed",
+      "summary": "Recycling day",
+      "eventType": "default",
+      "start": {
+        "date": "2026-10-29"
+      },
+      "end": {
+        "date": "2026-10-30"
+      }
+    },
+    {
+      "id": "evt010",
+      "status": "cancelled",
+      "summary": "Cancelled sync",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-29T08:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-29T08:30-07:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "evt011",
+      "status": "confirmed",
+      "summary": "Early flight to Example City",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-30T06:30-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-30T08:30-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "location": "Example Airport"
+    },
+    {
+      "id": "evt012",
+      "status": "confirmed",
+      "summary": "Conference: Example Summit",
+      "eventType": "default",
+      "start": {
+        "date": "2026-10-30"
+      },
+      "end": {
+        "date": "2026-11-01"
+      }
+    },
+    {
+      "id": "evt013",
+      "status": "confirmed",
+      "summary": "Gym class",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-31T07:30-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-31T08:30-07:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "evt014",
+      "status": "confirmed",
+      "summary": "Halloween party at the Lees'",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-31T19:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-31T23:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "evt015",
+      "status": "confirmed",
+      "summary": "Overnight maintenance window (fake)",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-11-01T02:30-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-11-01T03:30-08:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "evt016",
+      "status": "confirmed",
+      "summary": "Farmers market",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-11-01T09:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-11-01T10:30-08:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "rec001_20261102T180000Z",
+      "status": "confirmed",
+      "summary": "1:1 with manager",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-11-02T10:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-11-02T10:30-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "recurringEventId": "rec001"
+    },
+    {
+      "id": "evt017",
+      "status": "confirmed",
+      "summary": "Review \"quotes\" & do shell script \"echo pwned\" -- end tell {}",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-11-02T14:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-11-02T15:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "bdaytype01",
+      "status": "confirmed",
+      "summary": "Jordan Lee",
+      "eventType": "birthday",
+      "start": {
+        "date": "2026-11-02"
+      },
+      "end": {
+        "date": "2026-11-03"
+      }
+    },
+    {
+      "id": "evt018",
+      "status": "confirmed",
+      "summary": "Plumber visit",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-11-03T08:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-11-03T10:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "location": "Home"
+    },
+    {
+      "id": "evt019",
+      "status": "confirmed",
+      "summary": "Grandpa Joe's Birthday",
+      "eventType": "default",
+      "start": {
+        "date": "2026-11-03"
+      },
+      "end": {
+        "date": "2026-11-04"
+      }
+    },
+    {
+      "id": "evt020",
+      "status": "confirmed",
+      "summary": "Book club",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-11-04T18:30-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-11-04T20:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "evt021",
+      "status": "confirmed",
+      "summary": "Team offsite",
+      "eventType": "default",
+      "start": {
+        "date": "2026-11-05"
+      },
+      "end": {
+        "date": "2026-11-06"
+      }
+    },
+    {
+      "id": "evt022",
+      "status": "confirmed",
+      "summary": "Planning follow-up",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-11-05T09:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-11-05T10:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    },
+    {
+      "id": "evt023",
+      "status": "confirmed",
+      "summary": "Old meeting",
+      "eventType": "default",
+      "start": {
+        "dateTime": "2026-10-27T14:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2026-10-27T15:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      }
+    }
+  ],
+  "birthdays": [
+    {
+      "id": "bdaycal01",
+      "status": "confirmed",
+      "summary": "Alex Morgan's birthday",
+      "eventType": "birthday",
+      "start": {
+        "date": "2026-10-31"
+      },
+      "end": {
+        "date": "2026-11-01"
+      }
+    },
+    {
+      "id": "bdaycal02",
+      "status": "confirmed",
+      "summary": "Priya Shah's birthday",
+      "eventType": "birthday",
+      "start": {
+        "date": "2026-11-12"
+      },
+      "end": {
+        "date": "2026-11-13"
+      }
+    }
+  ]
+}

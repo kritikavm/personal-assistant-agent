@@ -1,0 +1,37 @@
+{
+  "2026-10-26": [
+    {
+      "id": "t-0091",
+      "title": "Buy coffee beans",
+      "category": "shopping",
+      "priority": "low",
+      "status": "done",
+      "created_at": "2026-10-24T10:00:00-07:00",
+      "updated_at": "2026-10-26T17:00:00-07:00",
+      "completed_at": "2026-10-26T17:00:00-07:00"
+    }
+  ],
+  "2026-10-27": [
+    {
+      "id": "t-0092",
+      "title": "Fertilize the orchids",
+      "category": "plants",
+      "priority": "low",
+      "status": "done",
+      "created_at": "2026-10-22T10:00:00-07:00",
+      "updated_at": "2026-10-27T08:30:00-07:00",
+      "completed_at": "2026-10-27T08:30:00-07:00"
+    },
+    {
+      "id": "t-0093",
+      "title": "Email recruiter at Example Co",
+      "category": "job",
+      "priority": "high",
+      "status": "done",
+      "created_at": "2026-10-23T10:00:00-07:00",
+      "updated_at": "2026-10-27T11:00:00-07:00",
+      "deadline": "2026-10-27",
+      "completed_at": "2026-10-27T11:00:00-07:00"
+    }
+  ]
+}

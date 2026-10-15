@@ -21,6 +21,7 @@ packages = ["src/assistant"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # lets tests and evals import tests.fakes
 
 [dependency-groups]
 dev = [

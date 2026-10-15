@@ -1,0 +1,9 @@
+{
+  "description": "Calendar unreachable or auth expired (FR-22): available is false.",
+  "extends": "base",
+  "now": "2026-10-28T08:00:00-07:00",
+  "calendar_available": false,
+  "tags": [
+    "calendar_outage"
+  ]
+}

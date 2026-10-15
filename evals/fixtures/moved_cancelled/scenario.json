@@ -1,0 +1,38 @@
+{
+  "description": "Second run, same morning: the dentist moved to 16:30, lunch was cancelled, the birthday card task was done.",
+  "extends": "base",
+  "now": "2026-10-28T09:30:00-07:00",
+  "calendar_changes": {
+    "remove": [
+      "evt003"
+    ],
+    "upsert": {
+      "primary": [
+        {
+          "id": "evt004",
+          "status": "confirmed",
+          "summary": "Dentist appointment",
+          "eventType": "default",
+          "start": {
+            "dateTime": "2026-10-28T16:30:00-07:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "end": {
+            "dateTime": "2026-10-28T17:15:00-07:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "location": "Example Dental",
+          "description": "Bring insurance card (fake)."
+        }
+      ]
+    }
+  },
+  "task_changes": {
+    "remove": [
+      "t-0102"
+    ]
+  },
+  "tags": [
+    "moved_cancelled"
+  ]
+}
