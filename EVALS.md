@@ -47,7 +47,7 @@ The test doubles below are the **Test doubles** component in ARCHITECTURE §1 (`
 - **Time zone:** `America/Los_Angeles`.
 - **Default "now":** Wednesday 2026-10-28, 08:00 (brief time). The 7-day window runs to Wednesday 2026-11-04.
 - **Preferences:** a copy of the PRD §8 example (`examples/preferences.yaml`).
-- **Calendar:** about 15 events across primary and a birthdays calendar.
+- **Calendar:** about 20 events across primary and a birthdays calendar.
 - **Tasks:** about 12 open tasks across all five categories and three priorities, plus a few completed tasks in `completed_tasks.json`.
 
 ### 3.2 Edge cases the fixtures must include
@@ -181,7 +181,8 @@ Most failure cases are Layer A because the failure is simulated and the behaviou
 
 - **Layer A:** run the planner and reconciler twice on the same snapshot with the fake Reminders client → the second run creates nothing. Then move one event and complete one task → exactly one update and one delete, nothing else.
 - **Layer B:** two full `run` evals in a row on the same fixture (with the fake client) → 0 duplicate reminders. If the AI proposes different extras the second time, the reconciler replaces them; it never stacks them.
-- **Rebuild:** delete the fake `state.json` and run again → state is rebuilt from the `[pa:<key>]` markers with no duplicates.
+- **Missing state:** delete the fake `state.json` and run again → no Reminders writes and the brief suggests `state rebuild` (FR-23a). With an empty list instead, the run starts fresh.
+- **Rebuild:** run `state rebuild`, confirm, then run again → state is rebuilt from the `[pa:<kind>:<key>]` markers, and the next run creates no duplicates.
 
 ### 4.9 Variation between runs
 

@@ -167,7 +167,7 @@ The current time is passed in the system prompt, not via a tool.
 | `secrets/google_oauth_client.json` | Google OAuth client secret file (S-10). Never committed. | Me (one-time setup) |
 | `.run.lock` | `fcntl` lock so runs, task write commands and `state rebuild` can't overlap | Startup guard, task write commands, `state rebuild` |
 
-- **Reminder key** = `source_type:source_id:fire_at` (FR-15). Each reminder's notes field also carries a marker `[pa:<key>]`, so `assistant state rebuild` can rebuild `state.json` from "Agent Reminders" alone (§6.5).
+- **Reminder key** = `source_type:source_id:fire_at` (FR-15). Each reminder's notes field also carries a marker `[pa:<kind>:<key>]` (`kind` is `default` or `extra`), so `assistant state rebuild` can rebuild `state.json` from "Agent Reminders" alone (§6.5).
 - **Google OAuth token:** macOS Keychain via `keyring` (S-10), never in `data/`.
 - **Permissions:** `data/` and its subfolders are created `700`, every file `600` (atomic writes keep the mode). `doctor` warns if anything is looser (S-10).
 - **Agent SDK session history:** to be checked during the build (S-16). If the SDK saves transcripts under `~/.claude/`, turn that off if possible; otherwise record the location in SECURITY.md §8.
@@ -179,6 +179,7 @@ The current time is passed in the system prompt, not via a tool.
 1. **Guard:** take the lock → billing check → load and validate preferences → scope check on the Google token. `run scheduled` exits quietly if today's scheduled run already succeeded. `run now` always runs.
 2. **Preflight Reminders:** check Reminders access, that "Agent Reminders" exists, and that it belongs to the On My Mac account (S-14). If any check fails, set `reminders_blocked` with the reason (FR-23), add the reason to `brief.data_gaps`, and continue so the brief still gets written.
    - Also load `state.json`. If it's invalid (FR-23a), copy it to `backups/state-invalid-<time>.json` (once per distinct bad file), set `reminders_blocked` with reason "state invalid", and add it to `brief.data_gaps`. `state.json` isn't written this run (so `last_runs` isn't updated either). Nothing is rebuilt automatically.
+   - If `state.json` is missing and "Agent Reminders" already holds items with a `[pa:]` marker, do the same (reason "state missing", no copy to back up). If the list holds no marked items, start with empty state.
 3. **Agent session (`run`):** Claude calls `get_preferences`, `get_tasks`, `get_calendar_events` (today…+7), `get_default_reminders`, `find_free_time` (today), then `submit_daily_plan` with the brief and any extra reminders.
 4. **Build the plan (planner):**
    - **Defaults (code):** compute from preferences and the data snapshot: meetings 1 h before; tasks on the morning of the due day and 1 h before the deadline; birthdays at 20:00 the evening before; plus the brief item (`source_type: brief`) at today's brief time, or now + 1 min on a later manual run. Marked `kind: default`.
@@ -275,7 +276,7 @@ Plain code only, no AI. Same validation, backup and atomic write path. `tasks de
 Plain code only, no AI. Run only by me, never automatically (FR-23a).
 
 1. Take the run lock.
-2. Read "Agent Reminders" and collect items whose notes carry a `[pa:<key>]` marker. Items without a marker are ignored and never touched.
+2. Read "Agent Reminders" and collect items whose notes carry a `[pa:<kind>:<key>]` marker. Items without a marker are ignored and never touched.
 3. Show what the new state would hold (counts by `source_type`) and ask `Rebuild state.json? [y/N]` (default No).
 4. On yes: copy the current `state.json` (if any) to `backups/`, then write the rebuilt state atomically. `last_runs` starts empty. Log the counts.
 
@@ -308,7 +309,7 @@ Plain code only, no AI. Run only by me, never automatically (FR-23a).
 | Step limit reached | SDK `max_turns` result | Same as malformed: fail cleanly, no writes. |
 | Tool outside allowlist (S-5) | Permission hook | Denied, logged. Session continues; the model sees the denial. |
 | Invalid preferences (§8) | Pydantic validation | Refuse to start, name the field and value. |
-| Invalid `state.json` (FR-23a, S-17) | JSON/schema load error | Same as a blocked list: no Reminders writes and `state.json` isn't written. The bad file is copied to `backups/`. The brief is still written, and the reason is in the brief (`data_gaps`) and in `doctor`, with the fix (`assistant state rebuild`). Never rebuilt automatically. |
+| Invalid `state.json`, or missing while the list holds `[pa:]` items (FR-23a, S-17) | JSON/schema load error, or no file plus marked items | Same as a blocked list: no Reminders writes and `state.json` isn't written. An invalid file is copied to `backups/`. The brief is still written, and the reason is in the brief (`data_gaps`) and in `doctor`, with the fix (`assistant state rebuild`). Never rebuilt automatically. |
 | Corrupt `tasks.json` | JSON/schema load error | Refuse to write. Point to the latest backup. Brief/Q&A report tasks as a data gap. |
 | Notification fails | `osascript` non-zero exit | Log and continue. The brief is still in the file and in Reminders. |
 | `data/` permissions too open (S-10) | `doctor` | Warning naming the path and expected mode. |

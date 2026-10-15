@@ -115,10 +115,10 @@ This plan breaks Phase 1 into small milestones. Each one can be built and tested
 
 - **Goal:** all reminder logic that doesn't need AI, proven on fixtures.
 - **Built:**
-  - `planner.py`: default-rule reminders (meetings, task morning-of and 1 h before, birthdays evening before, brief item), quiet hours (both outcomes), validation of extras (future, in window, known IDs, cap, no duplicate of a default), reconcile against `state.json` (create/update/delete, keep meeting/birthday reminders when calendar is unavailable), `[pa:<key>]` marker and state rebuild
+  - `planner.py`: default-rule reminders (meetings, task morning-of and 1 h before, birthdays evening before, brief item), quiet hours (both outcomes), validation of extras (future, in window, known IDs, cap, no duplicate of a default), reconcile against `state.json` (create/update/delete, keep meeting/birthday reminders when calendar is unavailable), `[pa:<kind>:<key>]` marker, missing `state.json` handling (FR-23a) and `assistant state rebuild` (on the fake Reminders client; real list at M14)
 - **Must pass (Layer A):**
   - EVALS §4.2 default reminders: ≥ 25 scenarios, 100%
-  - EVALS §4.8 Layer A: second run creates nothing; one move → one update; one completion → one delete; state rebuild without duplicates
+  - EVALS §4.8 Layer A: second run creates nothing; one move → one update; one completion → one delete; missing `state.json` with marked items blocks writes; state rebuild (confirmed) without duplicates
   - safety test 7: reconciler never touches a reminder not in `state.json` (and without our marker)
   - DST (2026-11-01) and window-edge cases
 - **You do:** nothing.

@@ -25,7 +25,15 @@ Newest entry at the top. No secrets, tokens or personal data.
 - Fixed while testing: `RunLog.event(name, event=…)` clashed with the parameter, and callers could overwrite `run_id`/`flow`. The name is now positional-only and the logger's own fields win.
 - Checks: pytest 146/146 (new `test_logging.py`, `test_state.py`, `test_guard.py`); canary (`CANARY-…`, lowercase, sentence form) passed through every log key, `error()`, status and an escaping exception, and through the real CLI, never appears in a log; a second process can't take the lock; `gitleaks dir` clean; demo on a scratch `data/` copy.
 - The user verified M3 on real `data/` (45 M3 tests, `tasks list`, log lines with IDs/counts/status only) and approved it. Committed M3 (`79966c7`).
-- Applied the user's M3 answers: ARCHITECTURE now covers the task-command lock and logging (§5 table, guard row, §6.4) and the `last_runs` statuses `ok`/`partial`/`failed` (§5). New PRD **FR-23a** and ARCHITECTURE §6.1 preflight, new §6.5 and a failure-table row: an invalid `state.json` blocks all Reminders writes like FR-23, a copy goes to `backups/`, the brief is still written, the reason shows in the brief and `doctor`, and only `assistant state rebuild` (run and confirmed by the user) rebuilds it from the `[pa:]` markers.
+- Applied the user's M3 answers: ARCHITECTURE now covers the task-command lock and logging (§5 table, guard row, §6.4) and the `last_runs` statuses `ok`/`partial`/`failed` (§5). New PRD **FR-23a** and ARCHITECTURE §6.1 preflight, new §6.5 and a failure-table row: an invalid `state.json` blocks all Reminders writes like FR-23, a copy goes to `backups/`, the brief is still written, the reason shows in the brief and `doctor`, and only `assistant state rebuild` (run and confirmed by the user) rebuilds it from the `[pa:]` markers. Committed (`16814e9`).
+- Built **M4 · Fixtures and fake clients** (no new installs):
+  - `src/assistant/integrations/`: interfaces as `Protocol`s plus real-client stubs that raise `NotImplementedError` (M13/M14). `google_calendar.py` also holds the shared date clamp (today…today+7), overlap check and Google-event normalisation (FR-2 fields only, cancelled dropped, three FR-3 birthday paths). `reminders.py`: `check_access`/`list_items`/`create`/`update`/`delete`, no list-name parameter, `ReminderAccess` (`ok`, `access_denied`, `list_missing`, `not_on_my_mac`). `notify.py`: `notify(title, message)`.
+  - `schemas.py`: `CalendarEvent` (all-day events use dates with Google's exclusive end) and `CalendarResult`.
+  - `tests/fakes/`: `FixtureCalendarClient` (same clamp and normalisation; outage; missing calendar → `skipped_calendars`), `FakeReminders` (in-memory list, records writes, blocks on any non-`ok` access, rejects naive times and unknown IDs), `FakeNotifier`, and `scenario.py` (loads `evals/fixtures/<name>/`, with `extends` plus calendar/task changes, and writes a temporary `700`/`600` data folder).
+  - `evals/fixtures/`: `base` (EVALS §3.1) and 10 more: `calendar_outage`, `birthdays_missing`, `moved_cancelled`, `empty_day`, and six `injection_*` cases, each with a unique canary. Each fixture tags the §3.2 edge cases it covers. All data is invented, and emails use `example.com`.
+  - `pyproject.toml`: pytest `pythonpath = ["."]` so tests (and later the eval runner) can import `tests.fakes`.
+- Checks: pytest 196/196 (50 in `test_fakes.py`: interface signatures match for fakes and real stubs, product code never imports `tests.fakes`, clamp and day-7/day-8 edges, attendee and description stripping, birthday paths, blocked Reminders write nothing, every fixture validates, every §3.2 edge case is tagged and checked against the data, IDs match the log formats, gitleaks clean on fixtures). Four deliberate code mutations each made a test fail. `gitleaks dir` clean.
+- The user verified M4 (pytest 196/196) and approved it with answers to the open questions (below).
 
 **Decisions made**
 - The project lives outside iCloud-synced folders, and `doctor` checks this.
@@ -35,19 +43,17 @@ Newest entry at the top. No secrets, tokens or personal data.
 - New: `src/assistant/config.py`, `src/assistant/schemas.py`, `examples/preferences.yaml`, `examples/tasks.json`, `tests/test_config.py`, `tests/test_schemas.py`.
 - Updated: `pyproject.toml`, `uv.lock`, `src/assistant/cli.py`, `SECURITY.md`, `CLAUDE.md`, this log.
 - M2: new `src/assistant/tasks_store.py`, `tests/test_tasks_store.py`; updated `src/assistant/cli.py`, `src/assistant/config.py` (`format_validation_error` root label), `examples/tasks.json` (dates).
-- M3 (uncommitted, awaiting review): new `src/assistant/logging_setup.py`, `state.py`, `guard.py`, `tests/test_logging.py`, `test_state.py`, `test_guard.py`; updated `src/assistant/cli.py`.
+- M3: new `src/assistant/logging_setup.py`, `state.py`, `guard.py`, `tests/test_logging.py`, `test_state.py`, `test_guard.py`; updated `src/assistant/cli.py`.
 
 **Open questions**
 - ~~The location check is in SECURITY.md only.~~ Closed: after the user verified and approved M1 (commit `54a9201`), it was added to PRD S-10 and to the ARCHITECTURE `doctor` row and failure table.
 - ~~ARCHITECTURE §6.4 doesn't mention the delete confirmation.~~ Closed: the user kept the `[y/N]` prompt; added to §6.4.
 - ~~No run lock until M3.~~ Closed: the user said that's fine.
 - ~~M3, for the user: (1) task write commands now take the run lock and every task command logs. ARCHITECTURE lists `.run.lock` under the startup guard and §6.4 doesn't mention either. Add them? (2) `last_runs` status values `ok`/`partial`/`failed` aren't in ARCHITECTURE §5. Add them? (3) There's no failure-table row for an invalid `state.json`. M3 rejects it; what should a run do then (stop, or skip reminder writes like FR-23 and suggest a rebuild from `[pa:]` markers)? Needed by M5/M10.~~ Closed: all three answered and applied (FR-23a, ARCHITECTURE §5/§6.1/§6.4/§6.5/§8).
-- EVALS §4.8 ("delete the fake `state.json` and run again → state is rebuilt from the markers") and plan M5 ("`[pa:<key>]` marker and state rebuild") assume an automatic rebuild when `state.json` is **missing**. That conflicts with "never rebuild automatically". A missing file is valid (fresh start), so a run would recreate every reminder and duplicate the ones already in the list. Proposal: a missing `state.json` while the list holds `[pa:]` items is handled like FR-23a (block writes, point to `state rebuild`); EVALS §4.8 becomes "run `state rebuild`, confirm, run again → no duplicates". Not changed yet.
-- The `[pa:<key>]` marker holds only the key, so a rebuild can't recover `kind` (default/extra). Proposal: the marker becomes `[pa:<kind>:<key>]`. `title` comes from the reminder and `content_hash` is recomputed. Not changed yet.
-- Plan: `state rebuild` fits M5 (logic and CLI on the fake Reminders client), with the real list at M14. Not changed yet.
+- ~~Missing `state.json`, the `[pa:]` marker's `kind`, where `state rebuild` is built, a stored-brief injection case, and the base scenario's event count.~~ Closed by the user's M4 answers: a missing `state.json` while the list holds `[pa:]` items is handled like FR-23a, and an empty list starts fresh; the marker becomes `[pa:<kind>:<key>]`; `state rebuild` is built in M5 on the fake Reminders client (real list at M14); no stored-brief case, because nothing reads `briefs/` back (add one if that changes); EVALS §3.1 now says "about 20 events". Applied to PRD FR-23a, ARCHITECTURE §5/§6.1/§6.5/§8, EVALS §3.1/§4.8 and plan M5.
 
 **Next step**
-- M4 · Fixtures and fake clients. Stop for review after it.
+- M5 · Planner (in progress).
 
 ---
 
