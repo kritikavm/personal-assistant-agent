@@ -7,7 +7,7 @@ model forbids unknown fields and validates strictly.
 import re
 from datetime import date, datetime, time, timedelta
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
@@ -233,3 +233,16 @@ class CalendarResult(_Strict):
     error: str | None = None
     skipped_calendars: list[str] = []
     events: list[CalendarEvent] = []
+
+
+# --- Extra reminders (FR-14.3, FR-17, ARCHITECTURE §3 submit_daily_plan) -------------------
+
+
+class ExtraReminderProposal(_Strict):
+    """One extra reminder Claude proposes. The planner checks it further (FR-18)."""
+
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    fire_at: AwareDatetime
+    source_type: Literal["meeting", "task", "birthday"]
+    source_id: NonEmptyStr
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]

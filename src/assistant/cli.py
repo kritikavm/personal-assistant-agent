@@ -8,7 +8,9 @@ import typer
 
 from assistant import __version__, config
 from assistant.guard import RunLockedError, run_lock
+from assistant.integrations.reminders import AGENT_LIST, AppleRemindersClient, ReminderAccess, RemindersClient
 from assistant.logging_setup import RunLog
+from assistant.state import STATE_FILE, plan_rebuild, write_rebuilt
 from assistant.schemas import Preferences, Priority, Task, TaskStatus
 from assistant.tasks_store import TaskStore, TaskStoreError, parse_deadline
 
@@ -18,6 +20,8 @@ app = typer.Typer(
 )
 tasks_app = typer.Typer(help="List, complete, edit and delete tasks (no AI).", no_args_is_help=True)
 app.add_typer(tasks_app, name="tasks")
+state_app = typer.Typer(help="Repair state.json (no AI).", no_args_is_help=True)
+app.add_typer(state_app, name="state")
 
 
 @app.callback()
@@ -214,3 +218,50 @@ def tasks_delete(
         task = store.delete(task_id)
         log.event("task_deleted", task_id=task.id)
     typer.echo(f"Deleted: {_describe(task, prefs.tz)}")
+
+
+# --- state rebuild (FR-23a, ARCHITECTURE §6.5) ------------------------------------------------
+
+
+def reminders_client() -> RemindersClient:
+    """The Reminders client. Tests replace this with the fake."""
+    return AppleRemindersClient()
+
+
+@state_app.command("rebuild")
+def state_rebuild() -> None:
+    """Rebuild state.json from the \\[pa:] markers in "Agent Reminders", after you confirm."""
+    _, prefs = _open_store()
+    data_dir = config.default_data_dir()
+    with RunLog(data_dir, "state.rebuild", prefs.tz) as log:
+        try:
+            with run_lock(data_dir):
+                client = reminders_client()
+                access = client.check_access()
+                if access is not ReminderAccess.ok:
+                    log.event("rebuild_blocked", status=access.value)
+                    raise _fail([f'can\'t read "{AGENT_LIST}": {access.value}'])
+                plan = plan_rebuild(client.list_items())
+                total = len(plan.state.reminders)
+                typer.echo(f'Found {total} reminder(s) with a [pa:] marker in "{AGENT_LIST}":')
+                for source_type, n in plan.counts.items():
+                    typer.echo(f"  {source_type:<9}{n}")
+                if plan.unmarked:
+                    typer.echo(f"Ignored {plan.unmarked} reminder(s) without a marker (never touched).")
+                if plan.duplicates:
+                    typer.echo(f"Ignored {plan.duplicates} reminder(s) whose marker repeats another one (left in the list).")
+                if not typer.confirm(f"Rebuild {STATE_FILE}?", default=False):
+                    log.event("rebuild_cancelled", count=total)
+                    typer.echo("Not rebuilt.")
+                    return
+                saved = write_rebuilt(data_dir, plan)
+                log.event("state_rebuilt", count=total, unmarked=plan.unmarked, duplicates=plan.duplicates)
+        except RunLockedError as e:
+            log.error(e)
+            raise _fail([str(e)]) from None
+        except NotImplementedError as e:
+            log.error(e)
+            raise _fail([str(e)]) from None
+    if saved:
+        typer.echo(f"Previous {STATE_FILE} saved as backups/{saved.name}.")
+    typer.echo(f"Rebuilt {STATE_FILE} with {total} reminder(s). Run history starts empty.")
