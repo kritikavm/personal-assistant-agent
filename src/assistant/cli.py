@@ -1,13 +1,16 @@
 """Command-line entry point."""
 
+import asyncio
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date, datetime
+from pathlib import Path
 
 import typer
 
 from assistant import __version__, config
+from assistant.agent import runner
 from assistant.guard import (
     BillingCredentialError,
     CalendarAccess,
@@ -18,6 +21,7 @@ from assistant.guard import (
     check_billing,
     check_calendar_scope,
     run_lock,
+    startup_guard,
 )
 from assistant.integrations.reminders import AGENT_LIST, AppleRemindersClient, ReminderAccess, RemindersClient
 from assistant.logging_setup import RunLog
@@ -65,6 +69,13 @@ def doctor() -> None:
     typer.echo("OK    billing: no API key or other billing variable set")
     data_dir = config.default_data_dir()
     errors = 0
+
+    login = runner.login_status()
+    if login.ok:
+        typer.echo(f"OK    Claude: {login.summary}")
+    else:
+        errors += 1
+        typer.echo(f"FAIL  Claude: {login.summary}")
 
     created = config.ensure_data_dir(data_dir)
     for path in created:
@@ -300,3 +311,58 @@ def state_rebuild() -> None:
     if saved:
         typer.echo(f"Previous {STATE_FILE} saved as backups/{saved.name}.")
     typer.echo(f"Rebuilt {STATE_FILE} with {total} reminder(s). Run history starts empty.")
+
+
+# --- smoke: one real session on the subscription (M7) -----------------------------------------
+
+SMOKE_REPLY = "PA-SMOKE-OK"
+
+
+def claude_projects_dir() -> Path:
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "projects"
+
+
+def saved_transcripts(session_id: str) -> list[Path]:
+    folder = claude_projects_dir()
+    return sorted(folder.rglob(f"*{session_id}*")) if session_id and folder.is_dir() else []
+
+
+@app.command()
+def smoke() -> None:
+    """Run one tiny Claude session with no tools to check the subscription setup (manual only; uses a little usage)."""
+    data_dir = config.default_data_dir()
+    try:
+        prefs = config.load_preferences(data_dir / config.PREFERENCES_FILE)
+    except config.PreferencesError as e:
+        raise _fail([f"preferences: {p}" for p in e.problems]) from None
+    with RunLog(data_dir, "agent.smoke", prefs.tz) as log:
+        try:
+            with startup_guard(data_dir) as start:
+                options = runner.build_options(
+                    system_prompt=f"You are a connectivity check. Reply with exactly {SMOKE_REPLY} and nothing else.",
+                    max_turns=1,
+                    cwd=data_dir,
+                )
+                result = asyncio.run(runner.run_session("Connectivity check.", options))
+        except (BillingCredentialError, ScopeError, RunLockedError) as e:
+            log.error(e)
+            raise _fail([str(e)]) from None
+        except config.PreferencesError as e:
+            log.error(e)
+            raise _fail([f"preferences: {p}" for p in e.problems]) from None
+        except runner.AgentFailure as e:
+            log.event("session_failed", status=e.kind.value)
+            raise _fail([f"Claude session failed: {e}"]) from None
+        transcripts = saved_transcripts(result.session_id)
+        log.event("session_ok", duration_ms=result.duration_ms, count=result.num_turns, ok=result.text == SMOKE_REPLY)
+    init = result.init
+    typer.echo(f"Reply:            {result.text!r} ({'as expected' if result.text == SMOKE_REPLY else 'UNEXPECTED'})")
+    typer.echo(f"Auth:             apiKeySource={init.get('apiKeySource')!r} (subscription login = 'none')")
+    typer.echo(f"Model:            {init.get('model')}")
+    typer.echo(f"Built-in tools:   {init.get('tools') or 'none'}")
+    typer.echo(f"MCP servers:      {[s.get('name') for s in init.get('mcp_servers') or []] or 'none'}")
+    typer.echo(f"Plugins/skills:   {init.get('plugins') or 'none'} / {init.get('skills') or 'none'}")
+    typer.echo(f"Rate limits seen: {result.rate_limits or 'none'}")
+    typer.echo(f"Saved transcript: {'YES: ' + ', '.join(map(str, transcripts)) if transcripts else 'none found under ' + str(claude_projects_dir())}")
+    if result.text != SMOKE_REPLY or transcripts:
+        raise typer.Exit(code=1)

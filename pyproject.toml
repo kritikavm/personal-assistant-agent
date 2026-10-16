@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Local personal assistant agent: read-only Google Calendar, local tasks, Apple Reminders (Phase 1)."
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "claude-agent-sdk>=0.2.168",
     "pydantic>=2.14.0",
     "pyyaml>=6.0.3",
     "typer>=0.27.3",
