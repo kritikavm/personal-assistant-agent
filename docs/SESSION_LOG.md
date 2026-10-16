@@ -4,6 +4,31 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 ---
 
+## 2026-10-16
+
+**What we did**
+- The user verified M6 (`doctor` refuses with `ANTHROPIC_API_KEY=x`) and approved the four choices; committed M6 (`16cd560`) and the docs (`bacbc5d`).
+- M7 · Agent SDK on my subscription, in progress. With the user's approval, installed `claude-agent-sdk` 0.2.168 (bundles Claude Code CLI 2.1.301; adds `mcp`, `anyio`, `jsonschema` and others). `pip-audit` clean.
+- Findings from the SDK source:
+  - Auth source: the init message's `apiKeySource`; `"none"` means a claude.ai login (third-party cloud providers also show `"none"`, but the guard already refuses their variables).
+  - Usage: `AssistantMessage.error` (`rate_limit`, `billing_error`, `authentication_failed`, …), `ResultMessage.is_error` with `api_error_status` (429, 401, …), `ResultError` exceptions, and `RateLimitEvent` (`allowed` / `allowed_warning` / `rejected`, window type incl. `overage`). When a limit is hit and extra usage is on, the CLI can continue on overage (pay-as-you-go), so the runner stops on `rejected` or any `overage` event.
+  - Session history: Claude Code saves transcripts under `~/.claude/projects/<cwd>/`. The CLI's `--no-session-persistence` is passed, but its help says it "only works with --print" and the SDK runs in stream-json mode, so the real smoke run must check whether a transcript appears.
+  - The SDK copies the parent environment into the CLI and `options.env` can only add keys, so the runner removes billing variables from its own process (backstop).
+  - `tools=[]` maps to `--tools ""` (no built-in tools); the SDK prefers its bundled CLI and the runner pins that path.
+  - `claude auth status --json` reports the login locally with no model call: `doctor` uses it.
+- Built (no real Claude call yet): `agent/runner.py` (locked-down options, `init_problems`, failure kinds and classification, rate-limit/overage stop, `run_session`, `check_login`), `doctor` "Claude: subscription login (pro)" line, `assistant smoke` (one fixed-reply session behind the startup guard; prints auth source, tools, MCP servers, plugins/skills, rate limits, and whether a transcript was saved). Checks: pytest 399/399 (58 in `test_runner.py`), 10 mutations caught, gitleaks clean, real `doctor` all OK.
+
+- The user confirmed extra usage is off. First real `assistant smoke`: aborted by the init check (`plugins;agents;skills`). A start-only peek (names only) showed these are all built into the CLI: three `builtin` plugins (`cc-plugin-agents-md`, `cc-plugin-telemetry`, `cc-plugin-plugin-authoring`), five built-in agent types, and bundled skills/slash commands. None came from user settings.
+- Locked down further instead of loosening the check: `skills=[]`, `--disable-slash-commands`, and inline `--settings` turning off the three built-in plugins. Built-in agents can't be removed but are only reachable through the Agent/Task tool (off); the check allows exactly those five names and fails on any other. The check also requires no slash commands.
+- Second real `assistant smoke`: reply `PA-SMOKE-OK`, `apiKeySource='none'`, model `claude-opus-5-5`, no tools, MCP servers, plugins or skills, rate limits `allowed`, and no transcript under `~/.claude/projects/` (S-16 resolved: not saved). Exit 0. pytest 400/400.
+- The user verified M7 (`doctor` all OK; no `ANTHROPIC`/`CLAUDE_CODE_USE` variables in the shell) and decided: lock-down and agents allowlist approved; docs updated (ARCHITECTURE §5/§7/§8, SECURITY §3/§4/§5/§8 and the open-items table); model pinned to `claude-sonnet-5-5` for every flow as one constant `MODEL` in `agent/runner.py` (Sonnet uses less of the Pro limits; change it if evals show a quality problem); `assistant smoke` stays a manual command, never scheduled.
+- Real `assistant smoke` with the pinned model: `PA-SMOKE-OK`, model `claude-sonnet-5-5`, no transcript. pytest 400/400.
+
+**Next step**
+- M8 · Tool server and permission hook (in progress).
+
+---
+
 ## 2026-10-14
 
 **What we did**

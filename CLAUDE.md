@@ -46,6 +46,7 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - If the calendar is unavailable, existing meeting and birthday reminders are kept.
 - Invalid `state.json` (FR-23a): block all Reminders writes like FR-23, copy the bad file to `backups/`, still write the brief, show the reason in the brief and `doctor`. Only `assistant state rebuild`, run and confirmed by the user, rebuilds from `[pa:]` markers. Never rebuild automatically. A missing `state.json` is handled the same way if the list already holds `[pa:]` items; otherwise the run starts fresh.
 - Tech stack: Python 3.12, `uv`, Typer, pydantic v2, `google-api-python-client`, `google-auth-oauthlib`, `keyring`, PyYAML.
+- Model: every flow uses `MODEL = claude-sonnet-5-5` (one constant in `agent/runner.py`, no fallback). Sessions are locked down beyond `setting_sources=[]`: skills, slash commands and the CLI's built-in plugins off, built-in agents allowlisted, init checked (`apiKeySource == "none"`), stop on any `rejected` or `overage` rate-limit event, no saved transcripts.
 - S-9 resolved: the user confirmed via Anthropic's help center that Agent SDK usage draws from subscription limits. The billing startup check stays.
 
 ## Status
@@ -72,14 +73,16 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 
 - **M6 · Startup guard** built (2026-10-14), verified and approved by the user: billing check + SDK env strip, calendar scope check (fake tokeninfo; no token → not connected), `startup_guard`, `doctor` billing and calendar lines, codebase test for Calendar write calls. pytest 341/341. Unconfirmable token scopes → calendar unused that run (ARCHITECTURE failure table).
 
+- **M7 · Agent SDK on my subscription** built (2026-10-16), verified and approved by the user: `claude-agent-sdk` 0.2.168, `agent/runner.py`, `doctor` Claude line, `assistant smoke` (manual only; real session passed). pytest 400/400.
+
 **Next step**
-- M7 · Agent SDK on my subscription (in progress).
+- M8 · Tool server and permission hook (in progress).
 
 ## Open issues / verify during build
 
-- [ ] Which Agent SDK field reports subscription login vs API-key auth (used by the startup billing check).
-- [ ] How the SDK signals usage exhausted or unavailable, so it can be classified for FR-24.
-- [ ] Whether the SDK saves session transcripts under `~/.claude/`, and if so, turn it off or document it (S-16, SECURITY §5/§8).
+- [x] Auth source: the init message's `apiKeySource` must be `"none"` (claude.ai login); `doctor` reads `claude auth status --json` locally (M7).
+- [x] Usage signals: `AssistantMessage.error`, error `ResultMessage` / `ResultError` with `api_error_status`, and `RateLimitEvent` (`rejected`, `overage`). Classified in `agent/runner.py` (M7).
+- [x] Session transcripts: off. With `--no-session-persistence` the real smoke session left no file under `~/.claude/projects/` (M7, 2026-10-16).
 - [ ] How to create an On My Mac Reminders list when iCloud Reminders is on, and how AppleScript reports a list's account (for the S-14 `doctor` check).
 - [ ] The Keychain item's service name, to fill in the kill-switch steps (SECURITY §8).
 - [ ] Real Google event IDs (incl. birthdays and recurring instances) and Reminders IDs match the log formats in `logging_setup.py` (M13, M14). Otherwise they are silently dropped from logs.

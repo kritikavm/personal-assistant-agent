@@ -46,7 +46,9 @@ The calendar tool also clamps date ranges to today…+7 days and drops attendees
   - `CLAUDE_CODE_USE_VERTEX`
   - `CLAUDE_CODE_USE_FOUNDRY`
 
-  These variables are also stripped from the SDK's environment as a backstop. If the session reports an API-key auth source instead of a subscription login, the run aborts.
+  These variables are also removed from the process environment before each session as a backstop (the SDK's CLI inherits it). If the session's init message reports an API-key auth source (`apiKeySource` other than `"none"`) instead of a subscription login, the run aborts before Claude replies.
+- **Never overage:** a rate-limit event that is `rejected` or in the `overage` window stops the session at once, so extra usage / pay-as-you-go is never used even if it's turned on in the account (S-8).
+- **One model:** every flow uses `MODEL = claude-sonnet-5-5`, one constant, with no fallback model.
 - **No fallback:** if included usage is unavailable or exhausted, the run stops with a clear error, plus a notification for scheduled runs. There is no code path to another key, provider or model (S-8, FR-24).
 
 ## 4. Agent guardrails
@@ -54,7 +56,7 @@ The calendar tool also clamps date ranges to today…+7 days and drops attendees
 | Guardrail | How |
 |---|---|
 | **Tool allowlist** | Each flow (`run`, `add`, `ask`) gets only the tools it needs from the in-process `pa` tool server (ARCHITECTURE §3). |
-| **Built-in tools disabled** | Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, Task and similar are disallowed. `setting_sources=[]` keeps personal Claude Code settings, CLAUDE.md files and plugins out of the session (S-5). |
+| **Built-in tools disabled** | `tools=[]`, and Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, Task, Agent, Skill and similar are disallowed by name. `setting_sources=[]` keeps personal Claude Code settings, CLAUDE.md files and plugins out of the session. Skills and slash commands are off, the CLI's built-in plugins are turned off, and the bundled CLI is pinned by path. The init message is checked before Claude replies; built-in agent types other than the five known ones, or any plugin, skill, slash command, tool or MCP server we didn't add, abort the session (S-5). |
 | **Permission hook** | A `PreToolUse` hook plus a `can_use_tool` callback, deny by default. Anything not on the flow's allowlist is denied and logged. Arguments are checked too (date ranges). |
 | **Proposals, not actions** | `submit_task`, `submit_daily_plan`, `submit_answer` and `propose_task_change` only return data to plain code. Each payload is validated against a pydantic schema. One retry is allowed, then the step fails and nothing is written (FR-25). |
 | **Plan validation** | Extra reminders must reference an event or task the tools actually returned, be in the future and within 7 days, and respect the per-item cap. Quiet hours apply to all reminders. Default reminders are computed by code, not the model (FR-17, FR-18). |
@@ -98,7 +100,7 @@ Reminder titles, notes and notification text can contain text from calendar invi
 
   They never store event titles, task text, descriptions, my questions, answers or brief content. Log files older than **30 days** are deleted automatically at the start of each run.
 - **Saved briefs** (`briefs/`) contain event and task details, so they are also deleted after **30 days**, at the start of each run (S-13).
-- **Agent SDK session history:** the SDK may save session transcripts under `~/.claude/`, which would hold calendar and task data outside `data/`. During the build: check this; if it does, turn persistence off if the SDK allows it; otherwise document the exact location here and add it to the cleanup steps in §8 (S-16).
+- **Agent SDK session history:** off. Every session runs with `--no-session-persistence`, so no transcript holding calendar or task data is written under `~/.claude/`. Verified in M7 (2026-10-16): a real session left no file under `~/.claude/projects/` (S-16).
 
 ## 6. Prompt injection and untrusted data (S-17)
 
@@ -145,7 +147,7 @@ To stop the agent completely and remove its access:
    - delete `data/` (tasks, state, briefs, logs, `secrets/`)
    - delete the "Agent Reminders" list in Reminders
    - delete the OAuth client in Google Cloud Console
-   - delete the Agent SDK session history if §5 finds one (location filled in during build)
+   - (no Agent SDK session history to delete: sessions aren't saved, §5)
 
 ## 9. Supply chain (S-19)
 
@@ -193,4 +195,4 @@ All seven gaps from the first review are now applied to PRD.md and ARCHITECTURE.
 | 4 | Lock-screen notifications | Neutral summary only; Reminders' own alerts accepted as a limitation, with a setup step for *When Unlocked* (S-15) |
 | 5 | Log contents and retention | IDs, statuses and errors only; logs and briefs kept 30 days (S-13, FR-26) |
 | 6 | OAuth client file location | `data/secrets/`, `600`, gitignored (S-10) |
-| 7 | SDK session transcripts | Check during build; turn off or document and add to cleanup (S-16). Still open until verified. |
+| 7 | SDK session transcripts | Resolved in M7: sessions run with `--no-session-persistence`; verified no transcript is written (S-16). |
