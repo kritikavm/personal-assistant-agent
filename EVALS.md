@@ -54,6 +54,7 @@ The test doubles below are the **Test doubles** component in ARCHITECTURE §1 (`
 
 | Edge case | Why |
 |---|---|
+| All-day events marked busy (`opaque`, e.g. a conference) and free (`transparent`, e.g. birthdays) | Busy ones block the working day in `find_free_time`; free ones don't |
 | All-day events (single and multi-day) | No "1 hour before" reminder; correct display in the brief (FR-2) |
 | Birthdays: on the birthdays calendar, Google birthday event type on primary, and an all-day event with "birthday" in the title | All three detection paths (FR-3); evening-before reminder |
 | Overdue tasks (deadline yesterday, last week) | Appear under *overdue*, not *due today* (FR-14, U6) |

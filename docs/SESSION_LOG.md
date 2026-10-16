@@ -24,8 +24,19 @@ Newest entry at the top. No secrets, tokens or personal data.
 - The user verified M7 (`doctor` all OK; no `ANTHROPIC`/`CLAUDE_CODE_USE` variables in the shell) and decided: lock-down and agents allowlist approved; docs updated (ARCHITECTURE §5/§7/§8, SECURITY §3/§4/§5/§8 and the open-items table); model pinned to `claude-sonnet-5-5` for every flow as one constant `MODEL` in `agent/runner.py` (Sonnet uses less of the Pro limits; change it if evals show a quality problem); `assistant smoke` stays a manual command, never scheduled.
 - Real `assistant smoke` with the pinned model: `PA-SMOKE-OK`, model `claude-sonnet-5-5`, no transcript. pytest 400/400.
 
+- Committed M7 (`230b883`) and the docs (`2063ad3`). A real `smoke` with the pinned model passed before the commit.
+- Built **M8 · Tool server and permission hook** (no new installs):
+  - `agent/tools.py`: `Snapshot` (one run's data: calendar window fetched once, tasks loaded once), `Observed` (event and task IDs Claude was shown, for later citation checks), the five read tools as plain functions plus the `pa` server, per-flow allowlists (`FLOW_TOOLS`). Each session's server registers only that flow's tools; the runner's init check fails the session if any other tool appears. `get_tasks` in `run` has no completed-task options and returns none even for `status: ["done"]` (FR-11a). `get_preferences` returns times and durations as written in `preferences.yaml`. `get_default_reminders` excludes the brief item. Every tool description carries the untrusted-data note.
+  - `find_free_time`: timed events inside working hours are busy; all-day events don't block; on today, time before now isn't free; real elapsed minutes on DST days; with the calendar unavailable, nothing is reported free ("free time unknown").
+  - `agent/permissions.py`: `PermissionGate` used as a `PreToolUse` hook on every tool (`matcher=None`) and as `can_use_tool`. Deny by default; denials and allowed calls logged by tool name only. `get_calendar_events` ranges are clamped to today…today+7 (`updatedInput`); malformed ranges or ranges fully outside the window are denied with a reason; `find_free_time` dates outside the window are denied (a single day isn't clamped to another day).
+  - `agent/prompts.py`: shared rules (current time, untrusted-data rule S-17, tools-only, no invented facts, window).
+  - `runner.build_options(gate=…)` wires the hook and callback. Log format for `tool` tightened to `mcp__<server>__<tool>` or a single CamelCase built-in name (the log canary test caught a looser first version).
+- Checks: pytest 470 passed, 1 skipped (`test_tools.py` 42, `test_permissions.py` 28 incl. safety test 4 for all three flows). 8 deliberate code mutations each made a test fail. gitleaks clean.
+- Live check (`PA_LIVE=1 uv run pytest tests/test_live.py -s`, fake fixture data, two short Sonnet sessions): asked to run `echo hello` with Bash, then fetch events from 2026-10-01 to 2026-12-31 and open tasks. Init tools were exactly the four `ask` read tools; Claude called only `get_calendar_events` and `get_tasks`, replied `events=22, tasks=13` (correct for the clamped window), and said it has no Bash tool. No transcript saved.
+- The user verified M8 (70/70) and approved all five choices, with one change: an all-day event blocks the working day only if Google marks it busy (`transparency: opaque`, e.g. out of office); free ones (birthdays, holidays) don't. Added `transparency` to `CalendarEvent` and normalisation (missing = `opaque`, Google's default), PRD FR-2, the ARCHITECTURE tool table and `find_free_time` row, and an EVALS §3.2 row. Base fixture: birthdays and recycling day `transparent`, conference and offsite `opaque`. ARCHITECTURE §7 now says the hook checks every call and `can_use_tool` is the backstop. pytest 473 + 1 skipped.
+
 **Next step**
-- M8 · Tool server and permission hook (in progress).
+- M9 · Task capture (`add`) and eval runner (in progress).
 
 ---
 

@@ -75,8 +75,10 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 
 - **M7 · Agent SDK on my subscription** built (2026-10-16), verified and approved by the user: `claude-agent-sdk` 0.2.168, `agent/runner.py`, `doctor` Claude line, `assistant smoke` (manual only; real session passed). pytest 400/400.
 
+- **M8 · Tool server and permission hook** built (2026-10-16), verified and approved by the user: `agent/tools.py` (snapshot, observed IDs, read tools, `find_free_time`, per-flow allowlists), `agent/permissions.py` (PreToolUse hook + `can_use_tool`, deny by default, date checks), `agent/prompts.py`, opt-in live test (`PA_LIVE=1`). pytest 473 + 1 skipped; live session passed. All-day events block free time only if `opaque` (FR-2 `transparency`).
+
 **Next step**
-- M8 · Tool server and permission hook (in progress).
+- M9 · Task capture (`add`) and eval runner (in progress).
 
 ## Open issues / verify during build
 

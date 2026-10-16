@@ -74,7 +74,7 @@ One person (me): a single user on a single Mac, with Google Calendar, the Apple 
 
 ### 7.1 Calendar (read-only)
 - **FR-1** Fetch events from today through 7 days ahead from the calendars named in preferences: **primary**, plus a **birthdays calendar if one exists**. If the configured birthdays calendar isn't found, the agent skips it, logs a note, and carries on.
-- **FR-2** For each event, capture title, start/end, all-day flag, location, and calendar source. Don't store attendee emails or descriptions unless needed for reasoning.
+- **FR-2** For each event, capture title, start/end, all-day flag, location, calendar source, and Google's free/busy flag (`transparency`: `opaque` = busy, the default; `transparent` = free). Don't store attendee emails or descriptions unless needed for reasoning.
 - **FR-3** Treat as birthdays: events on the birthdays calendar, events Google marks with the birthday event type, and all-day events with "birthday" in the title.
 
 ### 7.2 Task file
