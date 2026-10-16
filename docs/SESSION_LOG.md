@@ -42,6 +42,13 @@ Newest entry at the top. No secrets, tokens or personal data.
   - `schemas.py`: `ExtraReminderProposal`. `logging_setup.py`: brief source IDs (dates) and new counts allowed in logs.
   - CLI `assistant state rebuild`: takes the lock, reads the list, shows counts by source type, asks `[y/N]`, backs up the current file, writes; logs counts only. With the real client it stops with "arrives in M14".
 - Checks: pytest 294/294 (98 in `test_planner.py`: 43 default-reminder cases, the exact base-fixture plan, extras drop codes, §4.8 repeat runs incl. the `moved_cancelled` fixture, calendar outage, safety test 7, missing/invalid state, rebuild and CLI). 11 deliberate code mutations each made a test fail. `gitleaks dir` clean. `state rebuild` run on a scratch data folder.
+- The user verified M5 (pytest 98/98) and approved all nine choices. Added them to ARCHITECTURE §6.1/§6.5, then committed M5 (`090ed90`) and the docs (`0db120b`).
+- Built **M6 · Startup guard** (no new installs):
+  - `guard.py`: billing check (the six SECURITY §3 variables; refuses even if one is set but empty; names them, never values) and `sdk_env` (strips them, for the SDK later); calendar scope check against a `TokenInfoSource` (tokeninfo response → scopes; any scope other than `calendar.events.readonly` → `ScopeError`, refuse to start); `startup_guard` (lock → billing → preferences → scope, lock held throughout). Until M13 the token source is `NoGoogleToken`, so the calendar is "not connected" and runs continue without it.
+  - `doctor`: refuses at once if a billing variable is set (exit 1, nothing else checked); new "Google Calendar" line (not connected → WARN; write scope → FAIL).
+  - `tests/conftest.py` clears billing variables for every test, so the suite doesn't depend on the shell.
+- Checks: pytest 341/341 (47 in `test_startup_guard.py`: safety test 5 for each variable, safety test 1 with fake tokeninfo, safety test 2 scanning `src/` and `evals/` for Calendar write calls and non-read-only scope URLs, guard order and lock, doctor). The suite also passes with `ANTHROPIC_API_KEY` set in the shell. 5 deliberate code mutations each made a test fail. `gitleaks dir` clean. Verify: `ANTHROPIC_API_KEY=x uv run assistant doctor` → "refusing to start: ANTHROPIC_API_KEY is set…", exit 1.
+- One M2-era test changed: `test_doctor_ok` expected no warnings at all; it now allows exactly the "not connected" warning (until M13).
 **Decisions made**
 - The project lives outside iCloud-synced folders, and `doctor` checks this.
 - M2 choices (approved by the user): `tasks delete` asks `[y/N]` unless `--yes`; `tasks edit` takes one flag per field, with `--deadline none`, `--description ""` and `--minutes 0` clearing, a category from preferences only, and `done` refused (use `tasks done`); a deadline without an offset gets the preferences time zone; `done` writes `completed_tasks.json` first, so a crash between the two writes leaves the task in both files rather than neither; a `tasks.json` with done tasks or duplicate IDs counts as corrupt; a missing task file counts as empty.
@@ -61,8 +68,10 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 - ~~M5: nine choices made while building.~~ Closed: the user verified M5 (pytest 98/98) and approved all nine; added to ARCHITECTURE §6.1 (move pairing, skipped past-due defaults, past reminders dropped from state, quiet-hours-into-past skip, `after_source`, unreadable list + missing state, hand-deleted reminders, write failure, `reason` not written) and §6.5 (duplicate markers).
 
+- ~~M6: four choices.~~ Closed: the user verified M6 (`doctor` refuses with `ANTHROPIC_API_KEY=x`) and approved all four. Added a failure-table row for unconfirmable token scopes. Strict scopes stay; if the M13 Google login adds `openid` automatically, flag it then (CLAUDE.md open issue).
+
 **Next step**
-- M6 · Startup guard (in progress).
+- M7 · Agent SDK on my subscription (in progress).
 
 ---
 

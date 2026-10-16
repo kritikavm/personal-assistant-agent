@@ -70,8 +70,10 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 
 - **M5 · Planner** built (2026-10-14), verified and approved by the user: `planner.py` (defaults, quiet hours, extras, reconcile, apply), `state.py` marker / `check_state` / rebuild, CLI `state rebuild`. pytest 294/294. The nine build choices are in ARCHITECTURE §6.1/§6.5.
 
+- **M6 · Startup guard** built (2026-10-14), verified and approved by the user: billing check + SDK env strip, calendar scope check (fake tokeninfo; no token → not connected), `startup_guard`, `doctor` billing and calendar lines, codebase test for Calendar write calls. pytest 341/341. Unconfirmable token scopes → calendar unused that run (ARCHITECTURE failure table).
+
 **Next step**
-- M6 · Startup guard (in progress).
+- M7 · Agent SDK on my subscription (in progress).
 
 ## Open issues / verify during build
 
@@ -81,6 +83,7 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - [ ] How to create an On My Mac Reminders list when iCloud Reminders is on, and how AppleScript reports a list's account (for the S-14 `doctor` check).
 - [ ] The Keychain item's service name, to fill in the kill-switch steps (SECURITY §8).
 - [ ] Real Google event IDs (incl. birthdays and recurring instances) and Reminders IDs match the log formats in `logging_setup.py` (M13, M14). Otherwise they are silently dropped from logs.
+- [ ] Whether the Google login (M13) adds `openid` or other scopes automatically. The scope check is strict and would refuse; flag it to the user to decide.
 - [ ] How the birthdays calendar is resolved (birthday event type on primary vs a separate calendar ID).
 - [ ] Reminders AppleScript: create/update/delete by ID works under launchd, and the permission prompts.
 - [ ] launchd catch-up behaviour after sleep; Keychain access from a LaunchAgent.
