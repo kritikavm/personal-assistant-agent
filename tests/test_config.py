@@ -180,7 +180,8 @@ def test_doctor_ok(data_dir):
     assert result.exit_code == 0, result.output
     assert "OK    preferences: valid" in result.output
     assert "OK    location:" in result.output
-    assert "WARN" not in result.output
+    warnings = [line for line in result.output.splitlines() if line.startswith("WARN")]
+    assert warnings == ["WARN  Google Calendar: not connected (runs continue with tasks only)"]  # until M13
 
 
 def test_doctor_warns_on_644_file(data_dir):

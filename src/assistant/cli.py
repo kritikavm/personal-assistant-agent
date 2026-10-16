@@ -1,5 +1,6 @@
 """Command-line entry point."""
 
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date, datetime
@@ -7,7 +8,17 @@ from datetime import date, datetime
 import typer
 
 from assistant import __version__, config
-from assistant.guard import RunLockedError, run_lock
+from assistant.guard import (
+    BillingCredentialError,
+    CalendarAccess,
+    NoGoogleToken,
+    RunLockedError,
+    ScopeError,
+    TokenInfoSource,
+    check_billing,
+    check_calendar_scope,
+    run_lock,
+)
 from assistant.integrations.reminders import AGENT_LIST, AppleRemindersClient, ReminderAccess, RemindersClient
 from assistant.logging_setup import RunLog
 from assistant.state import STATE_FILE, plan_rebuild, write_rebuilt
@@ -35,12 +46,23 @@ def version() -> None:
     typer.echo(__version__)
 
 
+def google_tokens() -> TokenInfoSource:
+    """Where the Google token's scopes come from. The Keychain source arrives in M13."""
+    return NoGoogleToken()
+
+
 @app.command()
 def doctor() -> None:
-    """Check setup: data folder location and permissions, preferences.
+    """Check setup: billing, data folder location and permissions, preferences, calendar.
 
-    Exits with 1 if anything is broken. Warnings don't change the exit code.
+    Refuses at once if a billing variable is set. Exits with 1 if anything is
+    broken. Warnings don't change the exit code.
     """
+    try:
+        check_billing(os.environ)
+    except BillingCredentialError as e:
+        raise _fail([str(e)]) from None
+    typer.echo("OK    billing: no API key or other billing variable set")
     data_dir = config.default_data_dir()
     errors = 0
 
@@ -69,6 +91,19 @@ def doctor() -> None:
             typer.echo(f"FAIL  preferences: {problem}")
     else:
         typer.echo(f"OK    preferences: valid (time zone {prefs.timezone}, brief at {prefs.morning_brief.time:%H:%M})")
+
+    try:
+        calendar = check_calendar_scope(google_tokens())
+    except ScopeError as e:
+        errors += 1
+        typer.echo(f"FAIL  Google Calendar: {e}")
+    else:
+        if calendar is CalendarAccess.connected:
+            typer.echo("OK    Google Calendar: connected, read-only scope only")
+        elif calendar is CalendarAccess.not_connected:
+            typer.echo("WARN  Google Calendar: not connected (runs continue with tasks only)")
+        else:
+            typer.echo("WARN  Google Calendar: token scopes couldn't be checked; the calendar won't be used")
 
     raise typer.Exit(code=1 if errors else 0)
 
