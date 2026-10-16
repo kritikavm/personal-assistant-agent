@@ -37,7 +37,7 @@ def overlaps(event: CalendarEvent, start: date, end: date, tz: ZoneInfo) -> bool
 
 
 def normalize_event(raw: dict[str, Any], calendar: str, birthdays_calendar: bool) -> CalendarEvent | None:
-    """Turn a Google API event into a CalendarEvent, keeping only FR-2 fields.
+    """Turn a Google API event into a CalendarEvent, keeping only FR-2 fields (incl. free/busy).
 
     Attendees, descriptions, creators, links and everything else are dropped
     here. Cancelled events return None. Birthdays follow the three FR-3 paths.
@@ -61,6 +61,7 @@ def normalize_event(raw: dict[str, Any], calendar: str, birthdays_calendar: bool
         all_day=all_day,
         location=(raw.get("location") or "").strip() or None,
         is_birthday=is_birthday,
+        transparency="transparent" if raw.get("transparency") == "transparent" else "opaque",
     )
 
 

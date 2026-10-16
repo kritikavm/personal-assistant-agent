@@ -150,7 +150,8 @@
       },
       "end": {
         "date": "2026-10-30"
-      }
+      },
+      "transparency": "transparent"
     },
     {
       "id": "evt010",
@@ -191,7 +192,8 @@
       },
       "end": {
         "date": "2026-11-01"
-      }
+      },
+      "transparency": "opaque"
     },
     {
       "id": "evt013",
@@ -288,7 +290,8 @@
       },
       "end": {
         "date": "2026-11-03"
-      }
+      },
+      "transparency": "transparent"
     },
     {
       "id": "evt018",
@@ -315,7 +318,8 @@
       },
       "end": {
         "date": "2026-11-04"
-      }
+      },
+      "transparency": "transparent"
     },
     {
       "id": "evt020",
@@ -341,7 +345,8 @@
       },
       "end": {
         "date": "2026-11-06"
-      }
+      },
+      "transparency": "opaque"
     },
     {
       "id": "evt022",
@@ -383,7 +388,8 @@
       },
       "end": {
         "date": "2026-11-01"
-      }
+      },
+      "transparency": "transparent"
     },
     {
       "id": "bdaycal02",
@@ -395,7 +401,8 @@
       },
       "end": {
         "date": "2026-11-13"
-      }
+      },
+      "transparency": "transparent"
     }
   ]
 }

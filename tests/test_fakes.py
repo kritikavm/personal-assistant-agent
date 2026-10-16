@@ -130,7 +130,7 @@ def test_attendees_and_descriptions_are_stripped():
     assert raw_evt001["attendees"] and raw_evt001["description"]  # the fixture does contain them
     result = window()
     for event in result.events:
-        assert set(event.model_dump()) == {"id", "calendar", "title", "start", "end", "all_day", "location", "is_birthday"}
+        assert set(event.model_dump()) == {"id", "calendar", "title", "start", "end", "all_day", "location", "is_birthday", "transparency"}
     dumped = result.model_dump_json()
     for secret in ("example.com/evt001", "dana.kim@example.com", "sam.rivera@example.com", "Dial-in", "insurance card"):
         assert secret not in dumped

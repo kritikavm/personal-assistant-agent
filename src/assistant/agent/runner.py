@@ -189,7 +189,9 @@ def build_options(
     cwd: Path,
     allowed_tools: tuple[str, ...] = (),
     mcp_servers: dict[str, Any] | None = None,
+    gate: Any = None,
 ) -> ClaudeAgentOptions:
+    """Locked-down options. `gate` (a PermissionGate) adds the deny-by-default hook and callback."""
     return ClaudeAgentOptions(
         cli_path=bundled_cli(),
         system_prompt=system_prompt,
@@ -206,6 +208,8 @@ def build_options(
         max_turns=max_turns,
         cwd=cwd,
         extra_args={"no-session-persistence": None, "disable-slash-commands": None},
+        hooks=gate.hooks() if gate else None,
+        can_use_tool=gate.can_use_tool if gate else None,
     )
 
 

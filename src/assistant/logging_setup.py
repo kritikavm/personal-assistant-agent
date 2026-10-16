@@ -39,7 +39,7 @@ _STRING_FIELDS = {
     "flow": _NAME,
     "event": _NAME,
     "status": _NAME,
-    "tool": _NAME,
+    "tool": r"mcp__[a-z0-9_]{1,40}__[a-z0-9_]{1,64}|[A-Z][A-Za-z]{1,40}",  # mcp__pa__get_tasks, or a built-in like Bash
     "action": _NAME,
     "source_type": _NAME,
     "kind": _NAME,

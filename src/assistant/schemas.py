@@ -215,6 +215,8 @@ class CalendarEvent(_Strict):
     all_day: bool
     location: str | None = None
     is_birthday: bool = False
+    # Google's free/busy flag. Missing means "opaque" (busy), as in the Google API.
+    transparency: Literal["opaque", "transparent"] = "opaque"
 
     @model_validator(mode="after")
     def _times_match_all_day(self) -> "CalendarEvent":
