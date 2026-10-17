@@ -1,0 +1,58 @@
+{
+  "set": "brief",
+  "started": "2026-10-16T22:39:17-07:00",
+  "finished": "2026-10-16T22:39:31-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "3faa9692",
+  "code_version": "57d1681+dirty",
+  "fixture": "per case",
+  "summary": {
+    "cases": 1,
+    "run": 1,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "passed": 1,
+    "target": "0 invented items in 6/6; full checklist in ≥ 5/6 (my marks)",
+    "code_prechecks_passed": 1,
+    "met": null
+  },
+  "cases": [
+    {
+      "id": 5,
+      "fixture": "calendar_outage",
+      "now": "2026-10-28T08:00:00-07:00",
+      "kind": "calendar outage",
+      "status": "run",
+      "retries": 1,
+      "turns": 8,
+      "duration_ms": 12239,
+      "summary": "Today has several deadlines. The expense report (high priority) is due at 17:00. The birthday card for Alex is due today. Overdue: Renew library books (due 10/27) and Repot the monstera (due 10/21). Tomorrow is heavy: Send rent payment is due 07:30 and Prepare interview questions is due 12:00, so get ahead on the interview prep today.",
+      "focus": [
+        "Submit expense report (30 min) before its 17:00 deadline",
+        "Work on Prepare interview questions (90 min, in progress), due tomorrow 12:00",
+        "Send rent payment today, since it is due tomorrow at 07:30",
+        "Buy birthday card for Alex (due today)",
+        "Renew library books (overdue) and repot the monstera (overdue, 45 min)"
+      ],
+      "data_gaps": [
+        "Calendar data is missing: The calendar couldn't be reached or its login expired (run `assistant auth google` if this continues). Meetings and birthdays aren't in this brief; their existing reminders were kept."
+      ],
+      "markdown": "# Morning brief: Wednesday 2026-10-28\n\nGenerated 08:00 (manual run).\n\nToday has several deadlines. The expense report (high priority) is due at 17:00. The birthday card for Alex is due today. Overdue: Renew library books (due 10/27) and Repot the monstera (due 10/21). Tomorrow is heavy: Send rent payment is due 07:30 and Prepare interview questions is due 12:00, so get ahead on the interview prep today.\n\n## Today's schedule\n\nUnknown: calendar data is missing.\n\n## Due today\n\n- 17:00 Submit expense report (job, high, t-0101)\n- Buy birthday card for Alex (shopping, medium, t-0102)\n\n## Overdue\n\n- due 2026-10-21: Repot the monstera (plants, medium, t-0104)\n- due 2026-10-27: Renew library books (errands, low, t-0103)\n\n## Suggested focus\n\n- Submit expense report (30 min) before its 17:00 deadline\n- Work on Prepare interview questions (90 min, in progress), due tomorrow 12:00\n- Send rent payment today, since it is due tomorrow at 07:30\n- Buy birthday card for Alex (due today)\n- Renew library books (overdue) and repot the monstera (overdue, 45 min)\n\n## Free time (working hours)\n\nUnknown: calendar data is missing.\n\n## Data gaps\n\n- Calendar data is missing: The calendar couldn't be reached or its login expired (run `assistant auth google` if this continues). Meetings and birthdays aren't in this brief; their existing reminders were kept.\n\n## Reminders\n\n12 created, 0 updated, 0 removed.\n",
+      "checklist": {
+        "grounded": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "useful_focus": null
+      },
+      "checks": {
+        "lists": true,
+        "times_known": true,
+        "ids_known": true,
+        "gap_stated": true,
+        "unknown_times": [],
+        "unknown_ids": []
+      },
+      "passed": true
+    }
+  ]
+}

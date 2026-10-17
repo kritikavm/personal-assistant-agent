@@ -1,0 +1,11 @@
+{
+  "description": "EVALS §4.4 morning brief. Code fills schedule, due today and overdue (expected lists below, checked by Layer A); the AI eval checks the summary and focus against the §5.2 checklist: code pre-checks, then my marks.",
+  "cases": [
+    {"id": 1, "fixture": "base", "now": "2026-10-28T08:00:00-07:00", "kind": "normal day", "expected": {"schedule": ["evt001", "evt002", "evt003", "evt004"], "due_today": ["t-0101", "t-0102"], "overdue": ["t-0104", "t-0103"]}},
+    {"id": 2, "fixture": "base", "now": "2026-10-29T08:00:00-07:00", "kind": "busy day", "expected": {"schedule": ["evt009", "evt005", "evt006", "evt007", "evt008"], "due_today": ["t-0105"], "overdue": ["t-0104", "t-0103", "t-0101", "t-0102", "t-0111"]}},
+    {"id": 3, "fixture": "empty_day", "now": "2026-10-28T08:00:00-07:00", "kind": "empty day", "expected": {"schedule": [], "due_today": [], "overdue": []}},
+    {"id": 4, "fixture": "base", "now": "2026-10-31T08:00:00-07:00", "kind": "overdue tasks", "expected": {"schedule": ["evt012", "bdaycal01", "evt013", "evt014"], "due_today": [], "overdue": ["t-0104", "t-0103", "t-0101", "t-0102", "t-0111", "t-0105", "t-0106"]}},
+    {"id": 5, "fixture": "calendar_outage", "now": "2026-10-28T08:00:00-07:00", "kind": "calendar outage", "expected": {"schedule": [], "due_today": ["t-0101", "t-0102"], "overdue": ["t-0104", "t-0103"]}},
+    {"id": 6, "fixture": "base", "now": "2026-11-02T08:00:00-08:00", "kind": "birthday", "expected": {"schedule": ["bdaytype01", "rec001_20261102T180000Z", "evt017"], "due_today": ["t-0107"], "overdue": ["t-0104", "t-0103", "t-0101", "t-0102", "t-0111", "t-0105", "t-0106"]}}
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "description": "A routine week: regular meetings and low-stakes tasks, nothing that deserves an extra reminder.",
+  "extends": "base",
+  "now": "2026-10-28T08:00:00-07:00",
+  "tags": ["routine"]
+}

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from assistant.agent.permissions import PermissionGate
 from assistant.agent.prompts import capture_prompt
-from assistant.agent.runner import AgentFailure, Conversation, FailureKind, SessionResult, build_options
+from assistant.agent.runner import Conversation, SessionResult, build_options
 from assistant.agent.tools import Observed, ProposalBox, Snapshot, allowlist, build_server
 from assistant.logging_setup import RunLog
 from assistant.schemas import TaskProposal
@@ -30,11 +30,7 @@ class CaptureOutcome:
 
 
 def _accepted(box: ProposalBox) -> TaskProposal:
-    if box.accepted is not None:
-        return box.accepted
-    if box.attempts:
-        raise AgentFailure(FailureKind.malformed_output, "submit_task")
-    raise AgentFailure(FailureKind.no_proposal, "submit_task")
+    return box.result("submit_task")
 
 
 def _log_attempts(log: RunLog | None, box: ProposalBox, start: int) -> None:

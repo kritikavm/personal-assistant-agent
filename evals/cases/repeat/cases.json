@@ -1,0 +1,6 @@
+{
+  "description": "EVALS §4.8 Layer B: two full runs in a row on the same fixture, data folder and fake Reminders list. Pass: 0 duplicate reminders, at most max_per_item extras per item, and the list matches state.json.",
+  "cases": [
+    {"id": 1, "fixture": "base", "now": "2026-10-28T08:00:00-07:00", "runs": 2}
+  ]
+}

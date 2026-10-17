@@ -1,6 +1,6 @@
 """Layer B eval runner (EVALS §6). Developer script, not an `assistant` command.
 
-    uv run python evals/run_evals.py --set capture            # whole set
+    uv run python evals/run_evals.py --set capture            # whole set (capture, extras, brief, repeat)
     uv run python evals/run_evals.py --set capture --case 12  # one case
     uv run python evals/run_evals.py --set capture --dry-run  # list cases and session count, no AI
 
@@ -14,6 +14,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -26,13 +27,17 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from assistant.agent import runner  # noqa: E402
-from assistant.agent.prompts import CAPTURE  # noqa: E402
+from assistant.agent.prompts import CAPTURE, DAILY  # noqa: E402
 from assistant.agent.runner import AgentFailure, FailureKind  # noqa: E402
-from assistant.agent.tools import TASK_PROPOSAL_SCHEMA, UNAVAILABLE, Snapshot  # noqa: E402
+from assistant.agent.tools import DAILY_PLAN_SCHEMA, TASK_PROPOSAL_SCHEMA, UNAVAILABLE, Snapshot  # noqa: E402
 from assistant.flows.capture import capture  # noqa: E402
+from assistant.flows.daily_run import RunResult, daily_run  # noqa: E402
+from assistant.state import load_state, parse_marker  # noqa: E402
 from assistant.guard import check_billing  # noqa: E402
 from assistant.schemas import Task, TaskProposal  # noqa: E402
-from tests.fakes.scenario import load  # noqa: E402
+from tests.fakes.notify import FakeNotifier  # noqa: E402
+from tests.fakes.reminders import FakeReminders  # noqa: E402
+from tests.fakes.scenario import Scenario, load  # noqa: E402
 from claude_agent_sdk.types import CanUseToolShadowedWarning  # noqa: E402
 
 # Expected: allowlisted tools skip can_use_tool; the PreToolUse hook checks every call (ARCHITECTURE §7).
@@ -40,7 +45,7 @@ warnings.filterwarnings("ignore", category=CanUseToolShadowedWarning)
 
 CASES = ROOT / "evals" / "cases"
 RESULTS = ROOT / "evals" / "results"
-SETS = ("capture",)  # extras, brief, qa, failure, injection, repeat arrive with M10–M12
+SETS = ("capture", "extras", "brief", "repeat")  # qa, failure, injection arrive with M11–M12
 STOP_KINDS = {FailureKind.usage_unavailable, FailureKind.auth_unavailable, FailureKind.api_key_auth, FailureKind.cli_missing}
 TARGETS = {"category": 0.90, "deadline": 0.90, "priority": 0.80}
 
@@ -102,9 +107,12 @@ def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
 # --- Running ---------------------------------------------------------------------------------------
 
 
-def prompt_version() -> str:
-    """Changes whenever the capture prompt or the submit_task schema changes (EVALS §7.1 column)."""
-    text = CAPTURE + json.dumps(TASK_PROPOSAL_SCHEMA, sort_keys=True)
+def prompt_version(set_name: str = "capture") -> str:
+    """Changes whenever the set's prompt or proposal schema changes (EVALS §7.1 column)."""
+    if set_name == "capture":
+        text = CAPTURE + json.dumps(TASK_PROPOSAL_SCHEMA, sort_keys=True)
+    else:
+        text = DAILY + json.dumps(DAILY_PLAN_SCHEMA, sort_keys=True)
     return hashlib.sha256(text.encode()).hexdigest()[:8]
 
 
@@ -173,6 +181,223 @@ async def run_capture(cases: list[dict[str, Any]], fixture: str) -> list[dict[st
     return results
 
 
+# --- Daily-run sets: extras, brief, repeat (EVALS §4.3, §4.4, §4.8) ------------------------------------------
+
+
+def scenario(case: dict[str, Any]) -> Scenario:
+    s = load(case["fixture"])
+    if case.get("now"):
+        s.now = datetime.fromisoformat(case["now"])
+    return s
+
+
+class DailyWorld:
+    """One case's scratch data folder, fixture calendar and fake Reminders list. Never touches data/."""
+
+    def __init__(self, case: dict[str, Any], folder: Path):
+        self.sc = scenario(case)
+        self.data = self.sc.write_data_dir(folder / f"case-{case['id']}")
+        self.reminders = FakeReminders()
+        self.notifier = FakeNotifier()
+
+    async def run(self) -> RunResult:
+        return await daily_run(
+            self.data,
+            self.sc.preferences,
+            self.sc.now,
+            trigger="manual",
+            dry_run=False,
+            calendar=self.sc.calendar_client(),
+            reminders=self.reminders,
+            notifier=self.notifier,
+        )
+
+
+def score_extras(case: dict[str, Any], result: RunResult) -> dict[str, bool | None]:
+    """EVALS §4.3: every proposed extra passes the planner, should items get one, must-not items don't."""
+    kept = {r.source_id for r in result.plan.extras()}
+    return {
+        "valid": not result.plan.dropped_extras,
+        "should": all(item in kept for item in case.get("should", [])),
+        "must_not": not kept & set(case.get("must_not", [])),
+        "none_proposed": not result.proposal.extra_reminders if case.get("no_extras") else None,
+    }
+
+
+def extras_record(result: RunResult) -> dict[str, Any]:
+    dropped = dict(result.plan.dropped_extras)
+    return {
+        "proposed": [
+            {**json.loads(x.model_dump_json()), "dropped": dropped[i].value if i in dropped else None}
+            for i, x in enumerate(result.proposal.extra_reminders)
+        ],
+    }
+
+
+_CLOCK = re.compile(r"\b(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)|\b([01]?\d|2[0-3]):([0-5]\d)\b", re.IGNORECASE)
+_ID = re.compile(r"\b(?:t-\d{4}|evt\d{3}|bday\w+|rec\d{3}\w*|rtn\d{3})\b")
+
+
+def mentioned_times(text: str) -> set[str]:
+    """Clock times in free text, as HH:MM (24-hour)."""
+    out = set()
+    for m in _CLOCK.finditer(text):
+        if m.group(3):
+            hour, minute = int(m.group(1)) % 12, int(m.group(2) or 0)
+            hour += 12 if m.group(3).lower().startswith("p") else 0
+        else:
+            hour, minute = int(m.group(4)), int(m.group(5))
+        out.add(f"{hour:02d}:{minute:02d}")
+    return out
+
+
+def known_times(world: DailyWorld, result: RunResult) -> set[str]:
+    """Every clock time the fixture or code gave Claude: events, deadlines, free blocks, preferences."""
+    tz = world.sc.preferences.tz
+    times = set()
+    window = world.sc.calendar_client().list_events(world.sc.today, date.fromordinal(world.sc.today.toordinal() + 7))
+    for e in window.events:
+        for t in (e.start, e.end):
+            if isinstance(t, datetime):
+                times.add(t.astimezone(tz).strftime("%H:%M"))
+    for t in world.sc.tasks:
+        d = t.get("deadline")
+        if d and "T" in d:
+            times.add(datetime.fromisoformat(d).astimezone(tz).strftime("%H:%M"))
+    for b in result.brief.free_blocks:
+        times |= {datetime.fromisoformat(b[k]).astimezone(tz).strftime("%H:%M") for k in ("start", "end")}
+    prefs = world.sc.preferences
+    for clock in (prefs.morning_brief.time, prefs.working_hours.start, prefs.working_hours.end, prefs.quiet_hours.start, prefs.quiet_hours.end):
+        times.add(clock.strftime("%H:%M"))
+    times.add(world.sc.now.astimezone(tz).strftime("%H:%M"))
+    return times
+
+
+def score_brief(case: dict[str, Any], world: DailyWorld, result: RunResult) -> dict[str, Any]:
+    """EVALS §4.4: the lists must match the case (code fills them); text gets code pre-checks, then my marks."""
+    brief = result.brief
+    lists = {
+        "schedule": [e.id for e in brief.schedule],
+        "due_today": [t.id for t in brief.due_today],
+        "overdue": [t.id for t in brief.overdue],
+    }
+    text = " ".join([brief.summary, *brief.focus])
+    real_ids = {e["id"] for events in world.sc.calendars.values() for e in events} | {t["id"] for t in world.sc.tasks}
+    unknown_times = sorted(mentioned_times(text) - known_times(world, result))
+    unknown_ids = sorted(set(_ID.findall(text)) - real_ids)
+    return {
+        "lists": lists == case["expected"],
+        "times_known": not unknown_times,
+        "ids_known": not unknown_ids,
+        "gap_stated": bool(brief.data_gaps) if not brief.calendar_available or not brief.tasks_available else None,
+        "unknown_times": unknown_times,
+        "unknown_ids": unknown_ids,
+    }
+
+
+def repeat_check(world: DailyWorld) -> dict[str, Any]:
+    """EVALS §4.8: no duplicate reminders after the runs; the list matches state.json."""
+    items = list(world.reminders.items.values())
+    markers = [parse_marker(i.notes) for i in items]
+    keys = [m.key for m in markers if m]
+    per_item: dict[tuple, int] = {}
+    for m in markers:
+        if m and m.kind.value == "extra":
+            per_item[(m.source_type, m.source_id)] = per_item.get((m.source_type, m.source_id), 0) + 1
+    state = load_state(world.data)
+    cap = world.sc.preferences.reminders.extra_reminders.max_per_item
+    return {
+        "duplicates": len(keys) - len(set(keys)),
+        "unmarked": sum(m is None for m in markers),
+        "over_cap": sum(n > cap for n in per_item.values()),
+        "matches_state": set(keys) == set(state.reminders) and {i.reminder_id for i in items} == {r.reminder_id for r in state.reminders.values()},
+    }
+
+
+async def run_daily_set(set_name: str, cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    stop: str | None = None
+    with tempfile.TemporaryDirectory(prefix="pa-eval-") as folder:
+        for case in cases:
+            base = {"id": case["id"], "fixture": case["fixture"], "now": case.get("now"), "kind": case.get("kind"), "note": case.get("note")}
+            base = {k: v for k, v in base.items() if v is not None}
+            if stop:
+                results.append({**base, "status": "not_run", "reason": stop})
+                continue
+            world = DailyWorld(case, Path(folder))
+            runs: list[RunResult] = []
+            try:
+                for _ in range(case.get("runs", 1)):
+                    runs.append(await world.run())
+            except AgentFailure as e:
+                print(f"  case {case['id']:>2}: FAILED ({e.kind.value})")
+                if e.kind in STOP_KINDS:
+                    stop = e.kind.value
+                    results.append({**base, "status": "not_run", "reason": stop, "runs_done": len(runs)})
+                else:
+                    results.append({**base, "status": "failed", "failure": e.kind.value, "checks": {}, "passed": False})
+                continue
+            last = runs[-1]
+            record: dict[str, Any] = {
+                **base,
+                "status": "run",
+                "retries": sum(len(r.error_paths) for r in runs),
+                "turns": sum(r.session.num_turns for r in runs),
+                "duration_ms": sum(r.session.duration_ms for r in runs),
+            }
+            if set_name == "extras":
+                checks = score_extras(case, last)
+                record |= {"should": case.get("should", []), "must_not": case.get("must_not", []), **extras_record(last)}
+            elif set_name == "brief":
+                checks = score_brief(case, world, last)
+                record |= {
+                    "summary": last.brief.summary,
+                    "focus": last.brief.focus,
+                    "data_gaps": last.brief.data_gaps,
+                    "markdown": last.markdown,
+                    "checklist": {"grounded": None, "no_invented": None, "data_gaps": None, "useful_focus": None},  # my marks (§5.2)
+                }
+            else:
+                found = repeat_check(world)
+                second = runs[-1].diff
+                checks = {"no_duplicates": found["duplicates"] == 0, "within_cap": found["over_cap"] == 0, "matches_state": found["matches_state"]}
+                record |= {"found": found, "second_run": {"create": len(second.create), "update": len(second.update), "delete": len(second.delete)}}
+            ok = all(v is not False for k, v in checks.items() if isinstance(v, bool) or v is None)
+            record |= {"checks": checks, "passed": ok}
+            results.append(record)
+            marks = " ".join(f"{k}={'ok' if v else ('-' if v is None else 'FAIL')}" for k, v in checks.items() if isinstance(v, bool) or v is None)
+            print(f"  case {case['id']:>2}: {'pass' if ok else 'FAIL'}  {marks}")
+            if set_name == "brief":
+                print("    summary: " + last.brief.summary)
+                for line in last.brief.focus:
+                    print("    focus:   " + line)
+    return results
+
+
+def summarize_daily(set_name: str, results: list[dict[str, Any]]) -> dict[str, Any]:
+    run = [r for r in results if r["status"] == "run"]
+    summary: dict[str, Any] = {
+        "cases": len(results),
+        "run": len(run),
+        "not_run": sum(r["status"] == "not_run" for r in results),
+        "failed_sessions": sum(r["status"] == "failed" for r in results),
+        "passed": sum(r.get("passed", False) for r in results),
+    }
+    complete = summary["not_run"] == 0
+    if set_name == "extras":
+        summary["target"] = "≥ 7 of 8 correct; 0 invalid extras reach the plan"
+        summary["met"] = complete and summary["passed"] >= 7 and len(results) == 8
+        summary["dropped_extras"] = sum(1 for r in run for x in r["proposed"] if x["dropped"])
+    elif set_name == "brief":
+        summary["target"] = "0 invented items in 6/6; full checklist in ≥ 5/6 (my marks)"
+        summary["code_prechecks_passed"] = summary["passed"]
+        summary["met"] = None  # decided after my checklist marks
+    else:
+        summary["target"] = "0 duplicates"
+        summary["met"] = complete and summary["passed"] == len(results)
+    return summary
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--set", choices=SETS, required=True)
@@ -182,9 +407,12 @@ def main(argv: list[str] | None = None) -> int:
 
     data, cases = load_cases(args.set, args.case)
     if args.dry_run:
+        sessions = 0
         for c in cases:
-            print(f"  {c['id']:>2}  {c['now'][:16]}  {c['input']}")
-        print(f"{len(cases)} case(s) → {len(cases)} Claude session(s) on the subscription (model {runner.MODEL}).")
+            label = c.get("input") or c.get("kind") or c.get("note") or c["fixture"]
+            print(f"  {c['id']:>2}  {(c.get('now') or load(c['fixture']).now.isoformat())[:16]}  {c.get('fixture', data.get('fixture'))}: {label}")
+            sessions += c.get("runs", 1)
+        print(f"{len(cases)} case(s) → {sessions} Claude session(s) on the subscription (model {runner.MODEL}).")
         return 0
 
     check_billing(os.environ)
@@ -193,17 +421,21 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"Claude: {login.summary}")
 
     started = datetime.now().astimezone()
-    print(f"Running {args.set}: {len(cases)} case(s), model {runner.MODEL}, prompt {prompt_version()}")
-    results = asyncio.run(run_capture(cases, data["fixture"]))
-    summary = summarize(results)
+    print(f"Running {args.set}: {len(cases)} case(s), model {runner.MODEL}, prompt {prompt_version(args.set)}")
+    if args.set == "capture":
+        results = asyncio.run(run_capture(cases, data["fixture"]))
+        summary = summarize(results)
+    else:
+        results = asyncio.run(run_daily_set(args.set, cases))
+        summary = summarize_daily(args.set, results)
     out = {
         "set": args.set,
         "started": started.isoformat(timespec="seconds"),
         "finished": datetime.now().astimezone().isoformat(timespec="seconds"),
         "model": runner.MODEL,
-        "prompt_version": prompt_version(),
+        "prompt_version": prompt_version(args.set),
         "code_version": code_version(),
-        "fixture": data["fixture"],
+        "fixture": data.get("fixture", "per case"),
         "summary": summary,
         "cases": results,
     }

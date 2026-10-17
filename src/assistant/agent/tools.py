@@ -11,6 +11,7 @@ check fails the session if any other tool shows up.
 """
 
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -19,9 +20,10 @@ from typing import Any
 from claude_agent_sdk import create_sdk_mcp_server, tool
 from pydantic import ValidationError
 
+from assistant.agent.runner import AgentFailure, FailureKind
 from assistant.integrations.google_calendar import WINDOW_DAYS, clamp_range, overlaps
 from assistant.planner import default_reminders, local_at
-from assistant.schemas import CalendarEvent, CalendarResult, Preferences, Task, TaskProposal, TaskStatus
+from assistant.schemas import CalendarEvent, CalendarResult, DailyPlanProposal, Preferences, Task, TaskProposal, TaskStatus
 
 SERVER = "pa"
 
@@ -251,6 +253,27 @@ class ProposalBox:
         """A follow-up turn (e.g. after a clarifying answer) may submit again, with a fresh retry."""
         self.accepted, self.attempts = None, 0
 
+    def result(self, tool_name: str) -> Any:
+        """The accepted proposal, or the failure: still invalid after the retry, or never submitted."""
+        if self.accepted is not None:
+            return self.accepted
+        if self.attempts:
+            raise AgentFailure(FailureKind.malformed_output, tool_name)
+        raise AgentFailure(FailureKind.no_proposal, tool_name)
+
+    def start_attempt(self, what: str) -> dict[str, Any] | None:
+        """Count an attempt, or return the refusal when none is allowed."""
+        if self.accepted is not None:
+            return {"accepted": False, "errors": [f"{what} was already accepted in this turn; stop here"]}
+        if self.exhausted:
+            return {"accepted": False, "errors": ["no more attempts; stop here"]}
+        self.attempts += 1
+        return None
+
+    def reject(self, messages: list[str], paths: list[str]) -> dict[str, Any]:
+        self.error_paths.append(paths)
+        return {"accepted": False, "errors": messages, "attempts_left": MAX_ATTEMPTS - self.attempts}
+
 
 def _validation_errors(err: ValidationError) -> tuple[list[str], list[str]]:
     """(messages for Claude, field paths for the log). Claude sees no echoed input values either."""
@@ -263,30 +286,63 @@ def _validation_errors(err: ValidationError) -> tuple[list[str], list[str]]:
 
 
 def submit_task(snap: Snapshot, box: ProposalBox, args: dict[str, Any]) -> dict[str, Any]:
-    if box.accepted is not None:
-        return {"accepted": False, "errors": ["a task was already accepted in this turn; stop here"]}
-    if box.exhausted:
-        return {"accepted": False, "errors": ["no more attempts; stop here"]}
-    box.attempts += 1
+    refused = box.start_attempt("a task")
+    if refused:
+        return refused
     data = dict(args)
     data.setdefault("priority", snap.prefs.default_priority.value)
     try:
         proposal = TaskProposal.model_validate(data)
         proposal.deadline_value(snap.tz)
     except ValidationError as e:
-        messages, paths = _validation_errors(e)
-        box.error_paths.append(paths)
-        return {"accepted": False, "errors": messages, "attempts_left": MAX_ATTEMPTS - box.attempts}
+        return box.reject(*_validation_errors(e))
     except ValueError:
-        box.error_paths.append(["deadline"])
-        return {"accepted": False, "errors": ["deadline: not a real date or time"], "attempts_left": MAX_ATTEMPTS - box.attempts}
+        return box.reject(["deadline: not a real date or time"], ["deadline"])
     if proposal.category not in snap.prefs.categories:
-        box.error_paths.append(["category"])
-        return {
-            "accepted": False,
-            "errors": [f"category: must be one of {', '.join(snap.prefs.categories)}"],
-            "attempts_left": MAX_ATTEMPTS - box.attempts,
-        }
+        return box.reject([f"category: must be one of {', '.join(snap.prefs.categories)}"], ["category"])
+    box.accepted = proposal
+    return {"accepted": True}
+
+
+_LOCAL_TIME = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$")
+
+
+def _with_offset(value: Any, tz) -> Any:
+    """A local time without an offset ("2026-10-28T18:00") is read in the user's time zone."""
+    if isinstance(value, str) and _LOCAL_TIME.match(value):
+        try:
+            return datetime.fromisoformat(value).replace(tzinfo=tz).isoformat()
+        except ValueError:
+            return value
+    return value
+
+
+def submit_daily_plan(snap: Snapshot, seen: Observed, box: ProposalBox, args: dict[str, Any]) -> dict[str, Any]:
+    """The brief text and extra reminders. Extras may only point at items shown this session (S-17).
+
+    Rules that need the plan (window, cap, duplicates, quiet hours) are the planner's job:
+    it drops a failing extra instead of asking again (FR-18).
+    """
+    refused = box.start_attempt("a plan")
+    if refused:
+        return refused
+    data = dict(args)
+    if isinstance(data.get("extra_reminders"), list):
+        data["extra_reminders"] = [
+            {**x, "fire_at": _with_offset(x.get("fire_at"), snap.tz)} if isinstance(x, dict) else x for x in data["extra_reminders"]
+        ]
+    try:
+        proposal = DailyPlanProposal.model_validate(data)
+    except ValidationError as e:
+        return box.reject(*_validation_errors(e))
+    unknown = [
+        i
+        for i, x in enumerate(proposal.extra_reminders)
+        if x.source_id not in (seen.task_ids if x.source_type == "task" else seen.event_ids)
+    ]
+    if unknown:
+        paths = [f"extra_reminders[{i}].source_id" for i in unknown]
+        return box.reject([f"{p}: not an ID of that type returned by a tool this session" for p in paths], paths)
     box.accepted = proposal
     return {"accepted": True}
 
@@ -339,6 +395,37 @@ TASK_PROPOSAL_SCHEMA = {
 }
 
 
+# Types and descriptions only, for the same reason as TASK_PROPOSAL_SCHEMA.
+DAILY_PLAN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "brief": {
+            "type": "object",
+            "description": "Required. The parts of the brief you write; code adds the schedule, due today, overdue and free time lists",
+            "properties": {
+                "summary": {"type": "string", "description": "Required. 2-4 sentences on the shape of the day"},
+                "focus": {"type": "array", "items": {"type": "string"}, "description": "Up to 5 short suggestions, each about a real task or event"},
+                "data_gaps": {"type": "array", "items": {"type": "string"}, "description": "Anything you couldn't check, other than the gaps code adds"},
+            },
+        },
+        "extra_reminders": {
+            "type": "array",
+            "description": "Extra reminders for important items only; may be empty",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "fire_at": {"type": "string", "description": "YYYY-MM-DDTHH:MM local time, or with a UTC offset"},
+                    "source_type": {"type": "string", "description": "meeting, task or birthday"},
+                    "source_id": {"type": "string", "description": "ID of the event or task, as returned by a tool"},
+                    "reason": {"type": "string", "description": "One line: why this item needs an extra reminder"},
+                },
+            },
+        },
+    },
+}
+
+
 def build_tools(flow: str, snap: Snapshot, seen: Observed, box: ProposalBox | None = None) -> list:
     """This flow's tools: reads, plus the flow's proposal tool when a box is given."""
     task_props: dict[str, Any] = {"status": {"type": "array", "items": {"enum": ["todo", "in_progress", "done"]}}}
@@ -376,6 +463,13 @@ def build_tools(flow: str, snap: Snapshot, seen: Observed, box: ProposalBox | No
             "If it's rejected, fix the listed fields and submit once more.",
             TASK_PROPOSAL_SCHEMA,
         )(_wrap(lambda a: submit_task(snap, box, a)))
+    if box is not None and flow == "run":
+        available["submit_daily_plan"] = tool(
+            "submit_daily_plan",
+            "Submit the brief text and any extra reminders. Code validates them and does every write. "
+            "If it's rejected, fix the listed fields and submit once more.",
+            DAILY_PLAN_SCHEMA,
+        )(_wrap(lambda a: submit_daily_plan(snap, seen, box, a)))
     return [available[name] for name in FLOW_TOOLS[flow] if name in available]
 
 

@@ -122,7 +122,8 @@ class RunLog:
         with RunLog(data_dir, "tasks.done", tz) as log:
             log.event("task_completed", task_id=task.id)
 
-    Entering prunes old logs and briefs and writes `run_start`. Leaving writes
+    Entering prunes old logs and briefs (not in a dry run, which deletes nothing)
+    and writes `run_start`. Leaving writes
     `run_end` with status `ok`, or `error` + `run_end failed` if an exception
     escaped (only the exception's class name is logged).
     """
@@ -161,7 +162,7 @@ class RunLog:
 
     def __enter__(self) -> "RunLog":
         self._started = monotonic()
-        deleted = prune_old_files(self.data_dir, self._now().astimezone(self.tz).date())
+        deleted = [] if self.dry_run else prune_old_files(self.data_dir, self._now().astimezone(self.tz).date())
         self._write("run_start", {"dry_run": self.dry_run, **({"deleted": len(deleted)} if deleted else {})})
         return self
 

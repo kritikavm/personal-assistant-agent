@@ -1,0 +1,6 @@
+{
+  "description": "Extra reminders turned off in preferences (allowed: false): no extras at all (FR-17, FR-18).",
+  "extends": "base",
+  "now": "2026-10-28T08:00:00-07:00",
+  "tags": ["extras_off"]
+}

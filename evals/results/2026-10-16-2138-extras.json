@@ -1,0 +1,299 @@
+{
+  "set": "extras",
+  "started": "2026-10-16T21:38:09-07:00",
+  "finished": "2026-10-16T21:39:22-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "248d04c5",
+  "code_version": "57d1681+dirty",
+  "fixture": "per case",
+  "summary": {
+    "cases": 8,
+    "run": 8,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "passed": 7,
+    "target": "≥ 7 of 8 correct; 0 invalid extras reach the plan",
+    "met": true,
+    "dropped_extras": 0
+  },
+  "cases": [
+    {
+      "id": 1,
+      "fixture": "base",
+      "now": "2026-10-28T08:00:00-07:00",
+      "note": "Interview tomorrow at 13:00; preferences say interviews get a reminder the day before.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 10344,
+      "should": [
+        "evt007"
+      ],
+      "must_not": [
+        "t-0108",
+        "t-0109",
+        "evt009",
+        "evt001"
+      ],
+      "proposed": [
+        {
+          "title": "Tomorrow 13:00: interview, review your notes",
+          "fire_at": "2026-10-28T17:30:00-07:00",
+          "source_type": "meeting",
+          "source_id": "evt007",
+          "reason": "Interview is tomorrow at 13:00; day-before prep reminder.",
+          "dropped": null
+        },
+        {
+          "title": "Rent due tomorrow 07:30: send payment tonight",
+          "fire_at": "2026-10-28T20:00:00-07:00",
+          "source_type": "task",
+          "source_id": "t-0111",
+          "reason": "High-priority rent is due 07:30 tomorrow, before the default reminder is useful (07:00).",
+          "dropped": null
+        }
+      ],
+      "checks": {
+        "valid": true,
+        "should": true,
+        "must_not": true,
+        "none_proposed": null
+      },
+      "passed": true
+    },
+    {
+      "id": 2,
+      "fixture": "base",
+      "now": "2026-10-27T08:00:00-07:00",
+      "note": "The day before a high-priority job deadline (expense report, 10-28 17:00), two days before the interview.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 10093,
+      "should": [
+        "evt007",
+        "t-0101"
+      ],
+      "must_not": [
+        "t-0108",
+        "t-0109",
+        "evt023"
+      ],
+      "proposed": [
+        {
+          "title": "Tomorrow 13:00: interview, review your notes and questions",
+          "fire_at": "2026-10-28T18:30:00-07:00",
+          "source_type": "meeting",
+          "source_id": "evt007",
+          "reason": "Interview is the next day at 13:00; preferences ask for a day-before reminder.",
+          "dropped": null
+        },
+        {
+          "title": "Send rent payment before 07:30 tomorrow",
+          "fire_at": "2026-10-28T18:00:00-07:00",
+          "source_type": "task",
+          "source_id": "t-0111",
+          "reason": "High-priority rent is due Thu 07:30, before working hours; the default reminder is only at 07:00.",
+          "dropped": null
+        }
+      ],
+      "checks": {
+        "valid": true,
+        "should": false,
+        "must_not": true,
+        "none_proposed": null
+      },
+      "passed": false
+    },
+    {
+      "id": 3,
+      "fixture": "empty_day",
+      "note": "Nothing in the window, two undated low-priority tasks.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 5489,
+      "should": [],
+      "must_not": [
+        "t-0108",
+        "t-0109"
+      ],
+      "proposed": [],
+      "checks": {
+        "valid": true,
+        "should": true,
+        "must_not": true,
+        "none_proposed": true
+      },
+      "passed": true
+    },
+    {
+      "id": 4,
+      "fixture": "calendar_outage",
+      "note": "Calendar unavailable: no event IDs were shown, so an extra for an event would be rejected.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 8901,
+      "should": [],
+      "must_not": [
+        "t-0108",
+        "t-0109"
+      ],
+      "proposed": [
+        {
+          "title": "Tonight: send rent payment (due tomorrow 07:30)",
+          "fire_at": "2026-10-28T20:00:00-07:00",
+          "source_type": "task",
+          "source_id": "t-0111",
+          "reason": "High-priority rent is due 07:30 tomorrow, before the first default reminder at 07:00 leaves much time.",
+          "dropped": null
+        },
+        {
+          "title": "Today 15:00: work on interview questions (due tomorrow 12:00)",
+          "fire_at": "2026-10-28T15:00:00-07:00",
+          "source_type": "task",
+          "source_id": "t-0105",
+          "reason": "High-priority interview prep (90 min) is due tomorrow at 12:00 and still in progress.",
+          "dropped": null
+        }
+      ],
+      "checks": {
+        "valid": true,
+        "should": true,
+        "must_not": true,
+        "none_proposed": null
+      },
+      "passed": true
+    },
+    {
+      "id": 5,
+      "fixture": "extras_off",
+      "note": "Preferences turn extras off; even the interview gets none.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 6521,
+      "should": [],
+      "must_not": [
+        "evt007"
+      ],
+      "proposed": [],
+      "checks": {
+        "valid": true,
+        "should": true,
+        "must_not": true,
+        "none_proposed": true
+      },
+      "passed": true
+    },
+    {
+      "id": 6,
+      "fixture": "routine_week",
+      "note": "Routine meetings and low-stakes tasks only.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 5579,
+      "should": [],
+      "must_not": [
+        "rtn001",
+        "rtn002",
+        "rtn003",
+        "rtn004",
+        "rtn005",
+        "t-0301",
+        "t-0302",
+        "t-0303",
+        "t-0304",
+        "t-0305"
+      ],
+      "proposed": [],
+      "checks": {
+        "valid": true,
+        "should": true,
+        "must_not": true,
+        "none_proposed": true
+      },
+      "passed": true
+    },
+    {
+      "id": 7,
+      "fixture": "cap_one",
+      "note": "max_per_item is 1: two interviews, at most one extra each.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 11596,
+      "should": [
+        "evt007",
+        "evt030"
+      ],
+      "must_not": [
+        "t-0108",
+        "t-0109"
+      ],
+      "proposed": [
+        {
+          "title": "Tomorrow 13:00: interview, review your notes",
+          "fire_at": "2026-10-28T18:00:00-07:00",
+          "source_type": "meeting",
+          "source_id": "evt007",
+          "reason": "Job interview tomorrow; the preferences ask for a day-before reminder.",
+          "dropped": null
+        },
+        {
+          "title": "Tomorrow 10:30: visa interview, gather documents",
+          "fire_at": "2026-11-02T17:00:00-08:00",
+          "source_type": "meeting",
+          "source_id": "evt030",
+          "reason": "Visa interview is high-stakes and needs preparation the day before.",
+          "dropped": null
+        }
+      ],
+      "checks": {
+        "valid": true,
+        "should": true,
+        "must_not": true,
+        "none_proposed": null
+      },
+      "passed": true
+    },
+    {
+      "id": 8,
+      "fixture": "base",
+      "now": "2026-11-02T08:00:00-08:00",
+      "note": "A normal Monday with birthdays today and tomorrow; birthdays already have their default reminder.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 7638,
+      "should": [],
+      "must_not": [
+        "t-0108",
+        "t-0109",
+        "t-0113",
+        "evt020",
+        "bdaytype01",
+        "evt019"
+      ],
+      "proposed": [
+        {
+          "title": "Call insurance about claim before 10:00",
+          "fire_at": "2026-11-02T09:30:00-08:00",
+          "source_type": "task",
+          "source_id": "t-0107",
+          "reason": "High-priority task due at 10:00, same time as the 1:1; the default reminder is at 09:00.",
+          "dropped": null
+        }
+      ],
+      "checks": {
+        "valid": true,
+        "should": true,
+        "must_not": true,
+        "none_proposed": null
+      },
+      "passed": true
+    }
+  ]
+}

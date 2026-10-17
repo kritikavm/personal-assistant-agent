@@ -13,6 +13,7 @@ from assistant import __version__, config
 from assistant.agent import runner
 from assistant.agent.tools import UNAVAILABLE, Snapshot
 from assistant.flows.capture import capture
+from assistant.flows.daily_run import NOTIFY_TITLE, RunResult, daily_run, failure_text
 from assistant.guard import (
     BillingCredentialError,
     CalendarAccess,
@@ -26,8 +27,10 @@ from assistant.guard import (
     startup_checks,
     startup_guard,
 )
+from assistant.integrations.google_calendar import CalendarClient, GoogleCalendarClient
+from assistant.integrations.notify import MacNotifier, Notifier
 from assistant.integrations.reminders import AGENT_LIST, AppleRemindersClient, ReminderAccess, RemindersClient
-from assistant.logging_setup import RunLog
+from assistant.logging_setup import BRIEFS_DIR, RunLog
 from assistant.state import STATE_FILE, plan_rebuild, write_rebuilt
 from assistant.schemas import Preferences, Priority, Task, TaskStatus
 from assistant.tasks_store import TaskStore, TaskStoreError, parse_deadline
@@ -40,6 +43,8 @@ tasks_app = typer.Typer(help="List, complete, edit and delete tasks (no AI).", n
 app.add_typer(tasks_app, name="tasks")
 state_app = typer.Typer(help="Repair state.json (no AI).", no_args_is_help=True)
 app.add_typer(state_app, name="state")
+run_app = typer.Typer(help="The daily run: morning brief and reminders.", no_args_is_help=True)
+app.add_typer(run_app, name="run")
 
 
 @app.callback()
@@ -446,3 +451,106 @@ def add(
             raise _fail(e.problems) from None
         log.event("task_created", task_id=task.id)
     typer.echo(f"Saved as {task.id}.")
+
+
+# --- run (FR-12–FR-18, ARCHITECTURE §6.1) -------------------------------------------------------------
+
+
+def notifier() -> Notifier:
+    """The notifier. Tests replace this with the fake."""
+    return MacNotifier()
+
+
+def calendar_client(prefs: Preferences, today: date) -> CalendarClient:
+    """The calendar client, used only when the token's scopes were confirmed. Tests replace it."""
+    return GoogleCalendarClient(prefs.calendars, prefs.tz, today)
+
+
+_GUARD_FAILURES = {
+    BillingCredentialError: "billing_credential_set",
+    ScopeError: "google_token_scope",
+    RunLockedError: "another_run_in_progress",
+}
+
+
+def _show_diff(result: RunResult, tz) -> None:
+    diff = result.diff
+    if diff is None:
+        return
+    typer.echo("Reminder changes (dry run, nothing written):")
+    rows = [("+", p.fire_at, p.title, p.kind.value) for p in diff.create]
+    rows += [("~", p.fire_at, p.title, p.kind.value) for _, p in diff.update]
+    for sign, when, title, kind in sorted(rows, key=lambda r: r[1]):
+        typer.echo(f"  {sign} {when.astimezone(tz):%Y-%m-%d %H:%M}  {title}  [{kind}]")
+    typer.echo(f"  - {len(diff.delete)} removed, {len(diff.kept)} kept (data missing), {len(diff.forget)} past dropped from state")
+
+
+def _daily(trigger: str, dry_run: bool) -> None:
+    data_dir = config.default_data_dir()
+    scheduled = trigger == "scheduled"
+
+    def notify_failure(reason: str) -> None:
+        if not scheduled:  # a manual run shows the error in the terminal
+            return
+        try:
+            notifier().notify(NOTIFY_TITLE, failure_text(reason))
+        except Exception:  # noqa: BLE001 - nothing else to tell; the log has the failure
+            pass
+
+    try:
+        prefs = config.load_preferences(data_dir / config.PREFERENCES_FILE)
+    except config.PreferencesError as e:
+        notify_failure("invalid_preferences")
+        raise _fail([f"preferences: {p}" for p in e.problems]) from None
+    with RunLog(data_dir, f"run.{trigger}", prefs.tz, dry_run=dry_run) as log:
+        try:
+            with startup_guard(data_dir, tokens=google_tokens()) as start:
+                now = datetime.now(start.prefs.tz)
+                calendar = calendar_client(start.prefs, now.date()) if start.calendar_available else None
+                result = asyncio.run(
+                    daily_run(
+                        data_dir,
+                        start.prefs,
+                        now,
+                        trigger=trigger,
+                        dry_run=dry_run,
+                        calendar=calendar,
+                        calendar_error=start.calendar.value,
+                        reminders=reminders_client(),
+                        notifier=notifier(),
+                        log=log,
+                    )
+                )
+        except tuple(_GUARD_FAILURES) as e:
+            log.error(e)
+            notify_failure(_GUARD_FAILURES[type(e)])
+            raise _fail([str(e)]) from None
+        except config.PreferencesError as e:
+            log.error(e)
+            notify_failure("invalid_preferences")
+            raise _fail([f"preferences: {p}" for p in e.problems]) from None
+        except runner.AgentFailure as e:
+            log.status = "failed"
+            log.error(e.kind.value)
+            notify_failure(e.kind.value)
+            raise _fail([f"the Claude step failed: {e.kind.value}. No brief or reminders were written; see the log."]) from None
+    if result.skipped:
+        typer.echo("Today's scheduled run already finished.")
+        return
+    typer.echo(result.markdown)
+    if dry_run:
+        _show_diff(result, prefs.tz)
+    elif result.brief_path:
+        typer.echo(f"Saved {BRIEFS_DIR}/{result.brief_path.name}.")
+
+
+@run_app.command("now")
+def run_now(dry_run: bool = typer.Option(False, "--dry-run", help="Plan and print everything; write nothing but the log.")) -> None:
+    """Run the morning brief and reminders now (uses one Claude session)."""
+    _daily("manual", dry_run)
+
+
+@run_app.command("scheduled")
+def run_scheduled() -> None:
+    """The run launchd starts at the brief time. Runs at most once a day."""
+    _daily("scheduled", False)

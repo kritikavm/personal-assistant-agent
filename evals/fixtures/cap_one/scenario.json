@@ -1,0 +1,21 @@
+{
+  "description": "max_per_item 1, the interview tomorrow plus a visa interview next week: at most one extra per item (FR-18).",
+  "extends": "base",
+  "now": "2026-10-28T08:00:00-07:00",
+  "calendar_changes": {
+    "upsert": {
+      "primary": [
+        {
+          "id": "evt030",
+          "status": "confirmed",
+          "summary": "Visa interview at the consulate (fake)",
+          "eventType": "default",
+          "start": {"dateTime": "2026-11-03T10:30:00-08:00", "timeZone": "America/Los_Angeles"},
+          "end": {"dateTime": "2026-11-03T11:30:00-08:00", "timeZone": "America/Los_Angeles"},
+          "location": "Example Consulate"
+        }
+      ]
+    }
+  },
+  "tags": ["extras_cap"]
+}

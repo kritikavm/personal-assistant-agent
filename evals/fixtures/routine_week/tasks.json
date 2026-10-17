@@ -1,0 +1,49 @@
+[
+  {
+    "id": "t-0301",
+    "title": "Water the herbs",
+    "category": "plants",
+    "priority": "low",
+    "status": "todo",
+    "created_at": "2026-10-20T09:00:00-07:00",
+    "updated_at": "2026-10-20T09:00:00-07:00"
+  },
+  {
+    "id": "t-0302",
+    "title": "Order printer ink",
+    "category": "shopping",
+    "priority": "low",
+    "status": "todo",
+    "created_at": "2026-10-20T09:00:00-07:00",
+    "updated_at": "2026-10-20T09:00:00-07:00"
+  },
+  {
+    "id": "t-0303",
+    "title": "Tidy the desk",
+    "category": "personal",
+    "priority": "low",
+    "status": "todo",
+    "created_at": "2026-10-20T09:00:00-07:00",
+    "updated_at": "2026-10-20T09:00:00-07:00",
+    "deadline": "2026-10-30"
+  },
+  {
+    "id": "t-0304",
+    "title": "Pick up groceries",
+    "category": "errands",
+    "priority": "medium",
+    "status": "todo",
+    "created_at": "2026-10-20T09:00:00-07:00",
+    "updated_at": "2026-10-20T09:00:00-07:00",
+    "deadline": "2026-10-29"
+  },
+  {
+    "id": "t-0305",
+    "title": "Read the team newsletter",
+    "category": "job",
+    "priority": "low",
+    "status": "todo",
+    "created_at": "2026-10-20T09:00:00-07:00",
+    "updated_at": "2026-10-20T09:00:00-07:00"
+  }
+]

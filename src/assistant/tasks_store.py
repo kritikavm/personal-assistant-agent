@@ -40,7 +40,12 @@ class TaskStoreError(Exception):
 
 
 def atomic_write_json(path: Path, data: Any) -> None:
-    """Write JSON to a temp file in the same folder, fsync, then rename over `path`.
+    """Write JSON atomically (see atomic_write_text)."""
+    atomic_write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    """Write to a temp file in the same folder, fsync, then rename over `path`.
 
     A crash at any point leaves either the old file or the new one, never a
     partial file. The new file is created with mode 600 (S-10).
@@ -49,8 +54,7 @@ def atomic_write_json(path: Path, data: Any) -> None:
     try:
         os.fchmod(fd, FILE_MODE)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-            f.write("\n")
+            f.write(text)
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, path)

@@ -76,7 +76,7 @@ def test_atomic_write_survives_crash_while_writing(store, monkeypatch):
     def crash(*args, **kwargs):
         raise OSError("disk full")
 
-    monkeypatch.setattr(tasks_store.json, "dump", crash)
+    monkeypatch.setattr(tasks_store.os, "fsync", crash)  # after the temp file is written, before the rename
     with pytest.raises(OSError):
         store.delete("t-0001")
     assert store.tasks_path.read_bytes() == before

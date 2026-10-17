@@ -345,6 +345,21 @@ def check_applescript_title(s):
     assert any('"' in e.title and "do shell script" in e.title for e in window(s).events)
 
 
+def check_extras_off(s):
+    assert s.preferences.reminders.extra_reminders.allowed is False
+
+
+def check_extras_cap(s):
+    assert s.preferences.reminders.extra_reminders.max_per_item == 1
+    interviews = [e for e in window(s).events if "interview" in e.title.lower()]
+    assert len(interviews) == 2  # two items that each deserve an extra, so the cap matters
+
+
+def check_routine(s):
+    assert window(s).events and not any("interview" in e.title.lower() or e.all_day for e in window(s).events)
+    assert {t["priority"] for t in s.tasks} <= {"low", "medium"}
+
+
 EDGE_CASES = {
     "all_day": check_all_day,
     "birthdays_three_paths": check_birthdays_three_paths,
@@ -361,6 +376,9 @@ EDGE_CASES = {
     "window_edges": check_window_edges,
     "injection": check_injection,
     "applescript_title": check_applescript_title,
+    "extras_off": check_extras_off,
+    "extras_cap": check_extras_cap,
+    "routine": check_routine,
 }
 
 

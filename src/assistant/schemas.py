@@ -286,3 +286,19 @@ class TaskProposal(_Strict):
             "deadline": self.deadline_value(tz),
             "estimated_minutes": self.estimated_minutes,
         }
+
+
+# --- Daily plan (FR-14, ARCHITECTURE §3 submit_daily_plan) ------------------------------------------
+
+
+class BriefText(_Strict):
+    """The parts of the brief Claude writes. Code fills schedule, due today, overdue and free time."""
+
+    summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=800)]
+    focus: list[ShortText] = Field(default_factory=list, max_length=5)
+    data_gaps: list[ShortText] = Field(default_factory=list, max_length=10)
+
+
+class DailyPlanProposal(_Strict):
+    brief: BriefText
+    extra_reminders: list[ExtraReminderProposal] = Field(default_factory=list, max_length=20)

@@ -1,0 +1,13 @@
+{
+  "description": "EVALS §4.3 extra reminders. A case is correct when every proposed extra passes the planner (none dropped), every `should` item gets a kept extra, and no `must_not` item gets one. `no_extras`: no extra may be proposed at all.",
+  "cases": [
+    {"id": 1, "fixture": "base", "now": "2026-10-28T08:00:00-07:00", "should": ["evt007"], "must_not": ["t-0108", "t-0109", "evt009", "evt001"], "note": "Interview tomorrow at 13:00; preferences say interviews get a reminder the day before."},
+    {"id": 2, "fixture": "base", "now": "2026-10-27T08:00:00-07:00", "should": ["evt007", "t-0101"], "must_not": ["t-0108", "t-0109", "evt023"], "note": "The day before a high-priority job deadline (expense report, 10-28 17:00), two days before the interview."},
+    {"id": 3, "fixture": "empty_day", "should": [], "must_not": ["t-0108", "t-0109"], "no_extras": true, "note": "Nothing in the window, two undated low-priority tasks."},
+    {"id": 4, "fixture": "calendar_outage", "should": [], "must_not": ["t-0108", "t-0109"], "note": "Calendar unavailable: no event IDs were shown, so an extra for an event would be rejected."},
+    {"id": 5, "fixture": "extras_off", "should": [], "must_not": ["evt007"], "no_extras": true, "note": "Preferences turn extras off; even the interview gets none."},
+    {"id": 6, "fixture": "routine_week", "should": [], "must_not": ["rtn001", "rtn002", "rtn003", "rtn004", "rtn005", "t-0301", "t-0302", "t-0303", "t-0304", "t-0305"], "no_extras": true, "note": "Routine meetings and low-stakes tasks only."},
+    {"id": 7, "fixture": "cap_one", "should": ["evt007", "evt030"], "must_not": ["t-0108", "t-0109"], "note": "max_per_item is 1: two interviews, at most one extra each."},
+    {"id": 8, "fixture": "base", "now": "2026-11-02T08:00:00-08:00", "should": [], "must_not": ["t-0108", "t-0109", "t-0113", "evt020", "bdaytype01", "evt019"], "note": "A normal Monday with birthdays today and tomorrow; birthdays already have their default reminder."}
+  ]
+}

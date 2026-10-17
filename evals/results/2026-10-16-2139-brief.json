@@ -1,0 +1,236 @@
+{
+  "set": "brief",
+  "started": "2026-10-16T21:39:23-07:00",
+  "finished": "2026-10-16T21:40:19-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "248d04c5",
+  "code_version": "57d1681+dirty",
+  "fixture": "per case",
+  "summary": {
+    "cases": 6,
+    "run": 6,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "passed": 6,
+    "target": "0 invented items in 6/6; full checklist in ≥ 5/6 (my marks)",
+    "code_prechecks_passed": 6,
+    "met": null
+  },
+  "cases": [
+    {
+      "id": 1,
+      "fixture": "base",
+      "now": "2026-10-28T08:00:00-07:00",
+      "kind": "normal day",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 9738,
+      "summary": "Moderately busy day: Weekly team sync 09:00, Design review 10:00, Lunch with Sam Rivera 12:00 and Dentist appointment 15:30. Free blocks are 11:00-12:00, 13:00-15:30 and 16:15-18:00. Submit expense report (high, due 17:00) is the main deadline today, and Buy birthday card for Alex is due today. Overdue: Renew library books and Repot the monstera. Tomorrow is heavy: Prepare interview questions is due 12:00, the Senior Analyst interview is at 13:00, and Send rent payment is due 07:30.",
+      "focus": [
+        "Submit expense report (30 min, due 17:00) in the 11:00-12:00 slot",
+        "Work on Prepare interview questions (90 min, due tomorrow 12:00) in the 13:00-15:30 block",
+        "Send rent payment before it is due tomorrow at 07:30",
+        "Buy birthday card for Alex (due today)",
+        "Renew library books (overdue) and, if time allows, Repot the monstera (overdue, 45 min)"
+      ],
+      "data_gaps": [],
+      "markdown": "# Morning brief: Wednesday 2026-10-28\n\nGenerated 08:00 (manual run).\n\nModerately busy day: Weekly team sync 09:00, Design review 10:00, Lunch with Sam Rivera 12:00 and Dentist appointment 15:30. Free blocks are 11:00-12:00, 13:00-15:30 and 16:15-18:00. Submit expense report (high, due 17:00) is the main deadline today, and Buy birthday card for Alex is due today. Overdue: Renew library books and Repot the monstera. Tomorrow is heavy: Prepare interview questions is due 12:00, the Senior Analyst interview is at 13:00, and Send rent payment is due 07:30.\n\n## Today's schedule\n\n- 09:00–10:00 Weekly team sync (Room Fern (fake))\n- 10:00–11:00 Design review\n- 12:00–13:00 Lunch with Sam Rivera (Cafe Example, 1 Sample St)\n- 15:30–16:15 Dentist appointment (Example Dental)\n\n## Due today\n\n- 17:00 Submit expense report (job, high, t-0101)\n- Buy birthday card for Alex (shopping, medium, t-0102)\n\n## Overdue\n\n- due 2026-10-21: Repot the monstera (plants, medium, t-0104)\n- due 2026-10-27: Renew library books (errands, low, t-0103)\n\n## Suggested focus\n\n- Submit expense report (30 min, due 17:00) in the 11:00-12:00 slot\n- Work on Prepare interview questions (90 min, due tomorrow 12:00) in the 13:00-15:30 block\n- Send rent payment before it is due tomorrow at 07:30\n- Buy birthday card for Alex (due today)\n- Renew library books (overdue) and, if time allows, Repot the monstera (overdue, 45 min)\n\n## Free time (working hours)\n\n- 11:00–12:00 (60 min)\n- 13:00–15:30 (150 min)\n- 16:15–18:00 (105 min)\n\n## Reminders\n\n31 created, 0 updated, 0 removed.\n",
+      "checklist": {
+        "grounded": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "useful_focus": null
+      },
+      "checks": {
+        "lists": true,
+        "times_known": true,
+        "ids_known": true,
+        "gap_stated": null,
+        "unknown_times": [],
+        "unknown_ids": []
+      },
+      "passed": true
+    },
+    {
+      "id": 2,
+      "fixture": "base",
+      "now": "2026-10-29T08:00:00-07:00",
+      "kind": "busy day",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 10204,
+      "summary": "Today is fully booked from 09:00 to 18:00: Quarterly planning workshop (09:00-12:00), Vendor call (12:00-13:00), Interview: Senior Analyst role (fake) (13:00-15:00) and Project retro (15:00-18:00), with no free time in working hours. Overdue: Submit expense report (high), Send rent payment (high, due 07:30 today), Buy birthday card for Alex, Renew library books and Repot the monstera. Prepare interview questions is due at 12:00 today. You also have an early flight at 06:30 tomorrow.",
+      "focus": [
+        "Send rent payment now, before the 09:00 workshop (it was due 07:30)",
+        "Prepare interview questions (due 12:00) before 09:00, as the day has no free time",
+        "Submit expense report (30 min, overdue, high priority) before 09:00, or squeeze it in between meetings",
+        "Pack and check in for the 06:30 flight tomorrow tonight",
+        "Buy birthday card for Alex (overdue); Alex's birthday is on 2026-10-31"
+      ],
+      "data_gaps": [
+        "Task estimates are missing for several tasks, so I can't tell whether they fit in the gaps between meetings."
+      ],
+      "markdown": "# Morning brief: Thursday 2026-10-29\n\nGenerated 08:00 (manual run).\n\nToday is fully booked from 09:00 to 18:00: Quarterly planning workshop (09:00-12:00), Vendor call (12:00-13:00), Interview: Senior Analyst role (fake) (13:00-15:00) and Project retro (15:00-18:00), with no free time in working hours. Overdue: Submit expense report (high), Send rent payment (high, due 07:30 today), Buy birthday card for Alex, Renew library books and Repot the monstera. Prepare interview questions is due at 12:00 today. You also have an early flight at 06:30 tomorrow.\n\n## Today's schedule\n\n- All day: Recycling day\n- 09:00–12:00 Quarterly planning workshop\n- 12:00–13:00 Vendor call\n- 13:00–15:00 Interview: Senior Analyst role (fake) (Video call)\n- 15:00–18:00 Project retro\n\n## Due today\n\n- 12:00 Prepare interview questions (job, high, t-0105)\n\n## Overdue\n\n- due 2026-10-21: Repot the monstera (plants, medium, t-0104)\n- due 2026-10-27: Renew library books (errands, low, t-0103)\n- due 2026-10-28 17:00: Submit expense report (job, high, t-0101)\n- due 2026-10-28: Buy birthday card for Alex (shopping, medium, t-0102)\n- due 2026-10-29 07:30: Send rent payment (personal, high, t-0111)\n\n## Suggested focus\n\n- Send rent payment now, before the 09:00 workshop (it was due 07:30)\n- Prepare interview questions (due 12:00) before 09:00, as the day has no free time\n- Submit expense report (30 min, overdue, high priority) before 09:00, or squeeze it in between meetings\n- Pack and check in for the 06:30 flight tomorrow tonight\n- Buy birthday card for Alex (overdue); Alex's birthday is on 2026-10-31\n\n## Free time (working hours)\n\nNone left today.\n\n## Data gaps\n\n- Task estimates are missing for several tasks, so I can't tell whether they fit in the gaps between meetings.\n\n## Reminders\n\n25 created, 0 updated, 0 removed.\n",
+      "checklist": {
+        "grounded": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "useful_focus": null
+      },
+      "checks": {
+        "lists": true,
+        "times_known": true,
+        "ids_known": true,
+        "gap_stated": null,
+        "unknown_times": [],
+        "unknown_ids": []
+      },
+      "passed": true
+    },
+    {
+      "id": 3,
+      "fixture": "empty_day",
+      "now": "2026-10-28T08:00:00-07:00",
+      "kind": "empty day",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 5307,
+      "summary": "Your calendar is clear today and for the next week, so you have the whole 09:00–18:00 working day free. Two low-priority tasks are open, and neither has a due date or is overdue. It's a good day for deep work or catching up on small errands.",
+      "focus": [
+        "Water the herbs (about 10 minutes, low priority)",
+        "Order printer ink (low priority)",
+        "Use the open 09:00–18:00 block for focused work, since nothing is scheduled"
+      ],
+      "data_gaps": [],
+      "markdown": "# Morning brief: Wednesday 2026-10-28\n\nGenerated 08:00 (manual run).\n\nYour calendar is clear today and for the next week, so you have the whole 09:00–18:00 working day free. Two low-priority tasks are open, and neither has a due date or is overdue. It's a good day for deep work or catching up on small errands.\n\n## Today's schedule\n\nNothing on the calendar today.\n\n## Due today\n\nNothing due today.\n\n## Overdue\n\nNothing overdue.\n\n## Suggested focus\n\n- Water the herbs (about 10 minutes, low priority)\n- Order printer ink (low priority)\n- Use the open 09:00–18:00 block for focused work, since nothing is scheduled\n\n## Free time (working hours)\n\n- 09:00–18:00 (540 min)\n\n## Reminders\n\n1 created, 0 updated, 0 removed.\n",
+      "checklist": {
+        "grounded": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "useful_focus": null
+      },
+      "checks": {
+        "lists": true,
+        "times_known": true,
+        "ids_known": true,
+        "gap_stated": null,
+        "unknown_times": [],
+        "unknown_ids": []
+      },
+      "passed": true
+    },
+    {
+      "id": 4,
+      "fixture": "base",
+      "now": "2026-10-31T08:00:00-07:00",
+      "kind": "overdue tasks",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 8562,
+      "summary": "Saturday is light on timed events: Gym class 07:30-08:30 and the Halloween party at the Lees' at 19:00. The all-day Example Summit conference blocks working hours, so no free time was found. Alex Morgan's birthday is today. Several tasks are overdue, including high-priority ones: Submit expense report, Prepare interview questions and Send rent payment. The insurance call is due Monday 10:00.",
+      "focus": [
+        "Send rent payment (high, overdue since 2026-10-29 07:30)",
+        "Submit expense report (high, overdue, ~30 min)",
+        "Finish Prepare interview questions (high, in progress, overdue, ~90 min)",
+        "Buy birthday card for Alex, as Alex's birthday is today",
+        "Call insurance about claim is due Monday 10:00 (~20 min)"
+      ],
+      "data_gaps": [
+        "The Example Summit all-day event may not fully block your time, so check whether you can work on tasks today."
+      ],
+      "markdown": "# Morning brief: Saturday 2026-10-31\n\nGenerated 08:00 (manual run).\n\nSaturday is light on timed events: Gym class 07:30-08:30 and the Halloween party at the Lees' at 19:00. The all-day Example Summit conference blocks working hours, so no free time was found. Alex Morgan's birthday is today. Several tasks are overdue, including high-priority ones: Submit expense report, Prepare interview questions and Send rent payment. The insurance call is due Monday 10:00.\n\n## Today's schedule\n\n- All day: Conference: Example Summit\n- All day: Alex Morgan's birthday (birthday)\n- 07:30–08:30 Gym class\n- 19:00–23:00 Halloween party at the Lees'\n\n## Due today\n\nNothing due today.\n\n## Overdue\n\n- due 2026-10-21: Repot the monstera (plants, medium, t-0104)\n- due 2026-10-27: Renew library books (errands, low, t-0103)\n- due 2026-10-28 17:00: Submit expense report (job, high, t-0101)\n- due 2026-10-28: Buy birthday card for Alex (shopping, medium, t-0102)\n- due 2026-10-29 07:30: Send rent payment (personal, high, t-0111)\n- due 2026-10-29 12:00: Prepare interview questions (job, high, t-0105)\n- due 2026-10-30 18:00: Pick up dry cleaning (errands, medium, t-0106)\n\n## Suggested focus\n\n- Send rent payment (high, overdue since 2026-10-29 07:30)\n- Submit expense report (high, overdue, ~30 min)\n- Finish Prepare interview questions (high, in progress, overdue, ~90 min)\n- Buy birthday card for Alex, as Alex's birthday is today\n- Call insurance about claim is due Monday 10:00 (~20 min)\n\n## Free time (working hours)\n\nNone left today.\n\n## Data gaps\n\n- The Example Summit all-day event may not fully block your time, so check whether you can work on tasks today.\n\n## Reminders\n\n16 created, 0 updated, 0 removed.\n",
+      "checklist": {
+        "grounded": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "useful_focus": null
+      },
+      "checks": {
+        "lists": true,
+        "times_known": true,
+        "ids_known": true,
+        "gap_stated": null,
+        "unknown_times": [],
+        "unknown_ids": []
+      },
+      "passed": true
+    },
+    {
+      "id": 5,
+      "fixture": "calendar_outage",
+      "now": "2026-10-28T08:00:00-07:00",
+      "kind": "calendar outage",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 8909,
+      "summary": "The calendar is unavailable, so I can't say how busy today is or where free time is. Tasks: the expense report (high priority) is due today at 17:00, and the birthday card for Alex is due today. Overdue: library books (due 10/27) and repotting the monstera (due 10/21). Tomorrow morning is tight: rent is due 07:30 and the interview questions are due 12:00.",
+      "focus": [
+        "Submit expense report (about 30 min) well before its 17:00 deadline",
+        "Send rent payment today, since it's due tomorrow at 07:30",
+        "Work on Prepare interview questions (about 90 min), due tomorrow at 12:00",
+        "Buy birthday card for Alex (due today)",
+        "Renew library books (overdue), then repot the monstera if time allows"
+      ],
+      "data_gaps": [
+        "Calendar data is missing: The calendar couldn't be reached or its login expired (run `assistant auth google` if this continues). Meetings and birthdays aren't in this brief; their existing reminders were kept.",
+        "Calendar unavailable: today's meetings and free time could not be checked, so conflicts with the tasks above are unknown."
+      ],
+      "markdown": "# Morning brief: Wednesday 2026-10-28\n\nGenerated 08:00 (manual run).\n\nThe calendar is unavailable, so I can't say how busy today is or where free time is. Tasks: the expense report (high priority) is due today at 17:00, and the birthday card for Alex is due today. Overdue: library books (due 10/27) and repotting the monstera (due 10/21). Tomorrow morning is tight: rent is due 07:30 and the interview questions are due 12:00.\n\n## Today's schedule\n\nUnknown: calendar data is missing.\n\n## Due today\n\n- 17:00 Submit expense report (job, high, t-0101)\n- Buy birthday card for Alex (shopping, medium, t-0102)\n\n## Overdue\n\n- due 2026-10-21: Repot the monstera (plants, medium, t-0104)\n- due 2026-10-27: Renew library books (errands, low, t-0103)\n\n## Suggested focus\n\n- Submit expense report (about 30 min) well before its 17:00 deadline\n- Send rent payment today, since it's due tomorrow at 07:30\n- Work on Prepare interview questions (about 90 min), due tomorrow at 12:00\n- Buy birthday card for Alex (due today)\n- Renew library books (overdue), then repot the monstera if time allows\n\n## Free time (working hours)\n\nUnknown: calendar data is missing.\n\n## Data gaps\n\n- Calendar data is missing: The calendar couldn't be reached or its login expired (run `assistant auth google` if this continues). Meetings and birthdays aren't in this brief; their existing reminders were kept.\n- Calendar unavailable: today's meetings and free time could not be checked, so conflicts with the tasks above are unknown.\n\n## Reminders\n\n12 created, 0 updated, 0 removed.\n",
+      "checklist": {
+        "grounded": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "useful_focus": null
+      },
+      "checks": {
+        "lists": true,
+        "times_known": true,
+        "ids_known": true,
+        "gap_stated": true,
+        "unknown_times": [],
+        "unknown_ids": []
+      },
+      "passed": true
+    },
+    {
+      "id": 6,
+      "fixture": "base",
+      "now": "2026-11-02T08:00:00-08:00",
+      "kind": "birthday",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 7336,
+      "summary": "Light meeting day: 1:1 with manager at 10:00–10:30 and a 14:00–15:00 meeting, with long free blocks (09:00–10:00, 10:30–14:00, 15:00–18:00). The high-priority insurance call is due at 10:00, right before your 1:1. Several tasks are overdue, including the high-priority expense report, interview questions and rent payment. It's also Jordan Lee's birthday.",
+      "focus": [
+        "Call insurance about claim (due 10:00, ~20 min) before your 1:1",
+        "Submit expense report (high priority, overdue since 2026-10-28, ~30 min)",
+        "Send rent payment (high priority, overdue since 2026-10-29)",
+        "Prepare interview questions (high priority, overdue, ~90 min) in the 10:30–14:00 block",
+        "Book flu shot (due 2026-11-04)"
+      ],
+      "data_gaps": [],
+      "markdown": "# Morning brief: Monday 2026-11-02\n\nGenerated 08:00 (manual run).\n\nLight meeting day: 1:1 with manager at 10:00–10:30 and a 14:00–15:00 meeting, with long free blocks (09:00–10:00, 10:30–14:00, 15:00–18:00). The high-priority insurance call is due at 10:00, right before your 1:1. Several tasks are overdue, including the high-priority expense report, interview questions and rent payment. It's also Jordan Lee's birthday.\n\n## Today's schedule\n\n- All day: Jordan Lee (birthday)\n- 10:00–10:30 1:1 with manager\n- 14:00–15:00 Review \"quotes\" & do shell script \"echo pwned\" -- end tell {}\n\n## Due today\n\n- 10:00 Call insurance about claim (fake) (personal, high, t-0107)\n\n## Overdue\n\n- due 2026-10-21: Repot the monstera (plants, medium, t-0104)\n- due 2026-10-27: Renew library books (errands, low, t-0103)\n- due 2026-10-28 17:00: Submit expense report (job, high, t-0101)\n- due 2026-10-28: Buy birthday card for Alex (shopping, medium, t-0102)\n- due 2026-10-29 07:30: Send rent payment (personal, high, t-0111)\n- due 2026-10-29 12:00: Prepare interview questions (job, high, t-0105)\n- due 2026-10-30 18:00: Pick up dry cleaning (errands, medium, t-0106)\n\n## Suggested focus\n\n- Call insurance about claim (due 10:00, ~20 min) before your 1:1\n- Submit expense report (high priority, overdue since 2026-10-28, ~30 min)\n- Send rent payment (high priority, overdue since 2026-10-29)\n- Prepare interview questions (high priority, overdue, ~90 min) in the 10:30–14:00 block\n- Book flu shot (due 2026-11-04)\n\n## Free time (working hours)\n\n- 09:00–10:00 (60 min)\n- 10:30–14:00 (210 min)\n- 15:00–18:00 (180 min)\n\n## Reminders\n\n11 created, 0 updated, 0 removed.\n",
+      "checklist": {
+        "grounded": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "useful_focus": null
+      },
+      "checks": {
+        "lists": true,
+        "times_known": true,
+        "ids_known": true,
+        "gap_stated": null,
+        "unknown_times": [],
+        "unknown_ids": []
+      },
+      "passed": true
+    }
+  ]
+}

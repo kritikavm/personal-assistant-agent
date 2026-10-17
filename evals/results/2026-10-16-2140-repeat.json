@@ -1,0 +1,46 @@
+{
+  "set": "repeat",
+  "started": "2026-10-16T21:40:20-07:00",
+  "finished": "2026-10-16T21:40:46-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "248d04c5",
+  "code_version": "57d1681+dirty",
+  "fixture": "per case",
+  "summary": {
+    "cases": 1,
+    "run": 1,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "passed": 1,
+    "target": "0 duplicates",
+    "met": true
+  },
+  "cases": [
+    {
+      "id": 1,
+      "fixture": "base",
+      "now": "2026-10-28T08:00:00-07:00",
+      "status": "run",
+      "retries": 1,
+      "turns": 15,
+      "duration_ms": 24041,
+      "found": {
+        "duplicates": 0,
+        "unmarked": 0,
+        "over_cap": 0,
+        "matches_state": true
+      },
+      "second_run": {
+        "create": 1,
+        "update": 1,
+        "delete": 1
+      },
+      "checks": {
+        "no_duplicates": true,
+        "within_cap": true,
+        "matches_state": true
+      },
+      "passed": true
+    }
+  ]
+}

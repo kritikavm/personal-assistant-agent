@@ -44,7 +44,7 @@ Turn the user's text into exactly one task and submit it with submit_task. You m
 (categories, default priority) and get_tasks (to notice a duplicate; mention it in assumptions if so).
 
 - title: short, in the user's words. Put extra detail in description.
-- category: exactly one of the categories from preferences.
+- category: exactly one of the categories from preferences. If none fits and the list includes "other", use "other".
 - priority: high only for clear urgency or importance ("urgent", "asap", "important", a hard deadline today, \
 or near-deadline wording such as "expires soon", "overdue", "due soon"); \
 low only for clear signals ("whenever", "someday", "no rush", "low priority"); otherwise medium.
@@ -79,3 +79,40 @@ def date_table(now: datetime, tz: ZoneInfo, days: int = 21) -> str:
 
 def capture_prompt(now: datetime, tz: ZoneInfo) -> str:
     return system_prompt("add", now, tz, CAPTURE.format(calendar=date_table(now, tz)))
+
+
+DAILY = """\
+Prepare today's morning brief and decide whether any item needs an extra reminder, then submit both with \
+submit_daily_plan.
+
+1. Call get_preferences, get_tasks, get_calendar_events (today to today+7), get_default_reminders and \
+find_free_time (today).
+2. Code puts today's schedule, the tasks due today, the overdue tasks and today's free time into the brief itself, \
+from the same data. Treat those lists as correct: never question, hedge about or contradict them (for example, \
+don't suggest an event may not really block time). You write:
+- summary: 2-4 sentences on the shape of today: how busy it is, what matters most, any overdue work. Mention only \
+events and tasks the tools returned, with times exactly as given.
+- focus: up to 5 short suggestions for today, each about a real task or event (overdue and high-priority items \
+first; use the free time).
+- data_gaps: only gaps code can't see. Code already adds a gap line for an unavailable calendar, task list or \
+Reminders list; never repeat or reword those in data_gaps (leave data_gaps empty if there's nothing new). If the \
+calendar or tasks are unavailable, don't describe that part of the day as empty.
+3. Extra reminders, only if preferences allow them: add one only for a clearly important item, such as a job \
+interview, an exam, travel, or a hard deadline on a high-priority task. Routine meetings, birthdays and \
+low-priority tasks don't need one; default reminders already cover them. Most days need none, one or two.
+- source_type and source_id: the item exactly as a tool returned it ("meeting" for a calendar event, "birthday" \
+for a birthday event, "task" for a task).
+- fire_at: YYYY-MM-DDTHH:MM local time, in the future, before the event starts or the task's deadline, no later \
+than today+7, outside quiet hours, and not at the time of a default reminder for the same item.
+- At most max_per_item extras per item (from preferences). reason: one line saying why it's needed.
+- title: short and specific, e.g. "Tomorrow 13:00: interview, review your notes".
+4. If submit_daily_plan returns errors, fix exactly those fields and submit once more. After an accepted \
+submission, reply with one short sentence and stop.
+
+Dates for reference (today first):
+{calendar}
+"""
+
+
+def daily_prompt(now: datetime, tz: ZoneInfo) -> str:
+    return system_prompt("run", now, tz, DAILY.format(calendar=date_table(now, tz, days=8)))

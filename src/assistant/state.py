@@ -210,11 +210,12 @@ def _keep_invalid_copy(path: Path) -> Path | None:
     return target
 
 
-def check_state(data_dir: Path, items: list | None) -> StateCheck:
+def check_state(data_dir: Path, items: list | None, keep_copy: bool = True) -> StateCheck:
     """Load state.json for a run. Never repairs or rebuilds anything (FR-23a).
 
     `items` is what "Agent Reminders" holds now, or None if it couldn't be read.
     A missing file is a fresh start only when the list holds no [pa:] items.
+    `keep_copy=False` (dry run) skips the backup copy of an invalid file.
     """
     path = data_dir / STATE_FILE
     if not path.exists():
@@ -226,7 +227,7 @@ def check_state(data_dir: Path, items: list | None) -> StateCheck:
     try:
         return StateCheck(load_state(data_dir))
     except StateError as e:
-        return StateCheck(None, StateProblem.invalid, e.problems, _keep_invalid_copy(path))
+        return StateCheck(None, StateProblem.invalid, e.problems, _keep_invalid_copy(path) if keep_copy else None)
 
 
 # --- state rebuild (ARCHITECTURE §6.5) -------------------------------------------------------

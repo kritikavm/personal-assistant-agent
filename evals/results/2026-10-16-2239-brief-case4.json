@@ -1,0 +1,56 @@
+{
+  "set": "brief",
+  "started": "2026-10-16T22:39:06-07:00",
+  "finished": "2026-10-16T22:39:17-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "3faa9692",
+  "code_version": "57d1681+dirty",
+  "fixture": "per case",
+  "summary": {
+    "cases": 1,
+    "run": 1,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "passed": 1,
+    "target": "0 invented items in 6/6; full checklist in ≥ 5/6 (my marks)",
+    "code_prechecks_passed": 1,
+    "met": null
+  },
+  "cases": [
+    {
+      "id": 4,
+      "fixture": "base",
+      "now": "2026-10-31T08:00:00-07:00",
+      "kind": "overdue tasks",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 9097,
+      "summary": "Today is light on meetings but the working day is blocked by the all-day Conference: Example Summit. Gym class is 07:30–08:30 and the Halloween party at the Lees' runs 19:00–23:00. Several high-priority tasks are overdue: Send rent payment, Submit expense report and Prepare interview questions. Alex Morgan's birthday is today, and the birthday card task is overdue.",
+      "focus": [
+        "Send rent payment (high, overdue) – do it first, it takes a few minutes",
+        "Submit expense report (high, overdue, ~30 min)",
+        "Finish Prepare interview questions (high, in progress, ~90 min)",
+        "Buy birthday card for Alex – Alex's birthday is today",
+        "Call insurance about claim is due Monday 02 Nov at 10:00 – prepare details ahead of time"
+      ],
+      "data_gaps": [],
+      "markdown": "# Morning brief: Saturday 2026-10-31\n\nGenerated 08:00 (manual run).\n\nToday is light on meetings but the working day is blocked by the all-day Conference: Example Summit. Gym class is 07:30–08:30 and the Halloween party at the Lees' runs 19:00–23:00. Several high-priority tasks are overdue: Send rent payment, Submit expense report and Prepare interview questions. Alex Morgan's birthday is today, and the birthday card task is overdue.\n\n## Today's schedule\n\n- All day: Conference: Example Summit\n- All day: Alex Morgan's birthday (birthday)\n- 07:30–08:30 Gym class\n- 19:00–23:00 Halloween party at the Lees'\n\n## Due today\n\nNothing due today.\n\n## Overdue\n\n- due 2026-10-21: Repot the monstera (plants, medium, t-0104)\n- due 2026-10-27: Renew library books (errands, low, t-0103)\n- due 2026-10-28 17:00: Submit expense report (job, high, t-0101)\n- due 2026-10-28: Buy birthday card for Alex (shopping, medium, t-0102)\n- due 2026-10-29 07:30: Send rent payment (personal, high, t-0111)\n- due 2026-10-29 12:00: Prepare interview questions (job, high, t-0105)\n- due 2026-10-30 18:00: Pick up dry cleaning (errands, medium, t-0106)\n\n## Suggested focus\n\n- Send rent payment (high, overdue) – do it first, it takes a few minutes\n- Submit expense report (high, overdue, ~30 min)\n- Finish Prepare interview questions (high, in progress, ~90 min)\n- Buy birthday card for Alex – Alex's birthday is today\n- Call insurance about claim is due Monday 02 Nov at 10:00 – prepare details ahead of time\n\n## Free time (working hours)\n\nNone left today.\n\n## Reminders\n\n16 created, 0 updated, 0 removed.\n",
+      "checklist": {
+        "grounded": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "useful_focus": null
+      },
+      "checks": {
+        "lists": true,
+        "times_known": true,
+        "ids_known": true,
+        "gap_stated": null,
+        "unknown_times": [],
+        "unknown_ids": []
+      },
+      "passed": true
+    }
+  ]
+}
