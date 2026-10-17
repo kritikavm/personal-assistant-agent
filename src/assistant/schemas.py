@@ -248,3 +248,41 @@ class ExtraReminderProposal(_Strict):
     source_type: Literal["meeting", "task", "birthday"]
     source_id: NonEmptyStr
     reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
+# --- Task capture (FR-7–FR-10, ARCHITECTURE §3 submit_task) ------------------------------------
+
+ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+
+
+class TaskProposal(_Strict):
+    """What Claude proposes for `add`. Code adds id, status and timestamps, then validates as a Task."""
+
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    description: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] | None = None
+    category: NonEmptyStr
+    priority: Priority = Priority.medium
+    # "YYYY-MM-DD", or "YYYY-MM-DDTHH:MM" in local time (an explicit offset is kept).
+    deadline: Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?([+-]\d{2}:\d{2}|Z)?)?$")] | None = None
+    estimated_minutes: int | None = Field(default=None, gt=0, le=24 * 60)
+    assumptions: list[ShortText] = Field(default_factory=list, max_length=10)
+    clarifying_question: ShortText | None = None
+
+    def deadline_value(self, tz: ZoneInfo) -> date | datetime | None:
+        if self.deadline is None:
+            return None
+        if len(self.deadline) == 10:
+            return date.fromisoformat(self.deadline)
+        value = datetime.fromisoformat(self.deadline)
+        return value if value.tzinfo else value.replace(tzinfo=tz)
+
+    def task_fields(self, tz: ZoneInfo) -> dict:
+        """Fields for TaskStore.add (no assumptions or question)."""
+        return {
+            "title": self.title,
+            "description": self.description or None,
+            "category": self.category,
+            "priority": self.priority.value,
+            "deadline": self.deadline_value(tz),
+            "estimated_minutes": self.estimated_minutes,
+        }

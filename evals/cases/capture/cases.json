@@ -1,0 +1,512 @@
+{
+  "set": "capture",
+  "fixture": "base",
+  "cases": [
+    {
+      "id": 1,
+      "input": "buy milk tomorrow",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-29"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 2,
+      "input": "order printer paper, no rush",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          null
+        ],
+        "priority": "low"
+      },
+      "relative_date": false,
+      "clarify_ok": false
+    },
+    {
+      "id": 3,
+      "input": "get a birthday present for Sam by this Friday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-30"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false,
+      "note": "FR-8: this Friday said on Wednesday"
+    },
+    {
+      "id": 4,
+      "input": "urgent: buy cold medicine tonight",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-28"
+        ],
+        "priority": "high"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 5,
+      "input": "buy new running shoes before the end of the month",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 6,
+      "input": "restock coffee beans in 3 days",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 7,
+      "input": "send the quarterly report to my manager by next Friday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-11-06"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false,
+      "note": "FR-8: next Friday said on Wednesday"
+    },
+    {
+      "id": 8,
+      "input": "prepare slides for Monday's team meeting, important",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-11-02"
+        ],
+        "priority": "high"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 9,
+      "input": "update my resume whenever I get a chance",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          null
+        ],
+        "priority": "low"
+      },
+      "relative_date": false,
+      "clarify_ok": false
+    },
+    {
+      "id": 10,
+      "input": "reply to the recruiter email asap",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          null,
+          "2026-10-28"
+        ],
+        "priority": "high"
+      },
+      "relative_date": true,
+      "clarify_ok": false,
+      "note": "asap: today or no deadline"
+    },
+    {
+      "id": 11,
+      "input": "submit expense report by 2026-11-03 at 17:00",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-11-03T17:00"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": false,
+      "clarify_ok": false
+    },
+    {
+      "id": 12,
+      "input": "book a 1:1 with my skip-level this week",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          null,
+          "2026-10-30",
+          "2026-11-01"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": true,
+      "note": "this week: end of the work week, end of the week, or ask"
+    },
+    {
+      "id": 13,
+      "input": "water the fiddle leaf fig tomorrow morning",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          "2026-10-29"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 14,
+      "input": "repot the monstera this weekend",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          "2026-10-31",
+          "2026-11-01"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 15,
+      "input": "fertilize the herbs, low priority",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          null
+        ],
+        "priority": "low"
+      },
+      "relative_date": false,
+      "clarify_ok": false
+    },
+    {
+      "id": 16,
+      "input": "check the orchids for pests in 3 days",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 17,
+      "input": "move the succulents inside before the frost on Sunday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          "2026-11-01"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 18,
+      "input": "call mom on her birthday next Tuesday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          "2026-11-03"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false,
+      "note": "FR-8: next Tuesday = Tuesday of the following week"
+    },
+    {
+      "id": 19,
+      "input": "practice guitar for 30 minutes",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          null
+        ],
+        "priority": "medium"
+      },
+      "relative_date": false,
+      "clarify_ok": false
+    },
+    {
+      "id": 20,
+      "input": "schedule a dentist checkup, it's important",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          null
+        ],
+        "priority": "high"
+      },
+      "relative_date": false,
+      "clarify_ok": true
+    },
+    {
+      "id": 21,
+      "input": "journal for 20 minutes tonight",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          "2026-10-28"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 22,
+      "input": "plan a weekend trip with Alex next Saturday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          "2026-11-07"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 23,
+      "input": "drop off the dry cleaning tomorrow",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-10-29"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 24,
+      "input": "return the library books by this Saturday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 25,
+      "input": "get the car's oil changed sometime, no rush",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          null
+        ],
+        "priority": "low"
+      },
+      "relative_date": false,
+      "clarify_ok": false
+    },
+    {
+      "id": 26,
+      "input": "mail the tax form, urgent, due Nov 2",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-11-02"
+        ],
+        "priority": "high"
+      },
+      "relative_date": false,
+      "clarify_ok": false
+    },
+    {
+      "id": 27,
+      "input": "pick up the package from the post office in 2 days",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-10-30"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 28,
+      "input": "finish the onboarding paperwork by Monday",
+      "now": "2026-11-02T09:00:00-08:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          null,
+          "2026-11-09"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": true,
+      "note": "EVALS \u00a73.3: 'by Monday' said on a Monday; next Monday or ask"
+    },
+    {
+      "id": 29,
+      "input": "drop the parcel at the post office tomorrow at 7am",
+      "now": "2026-10-31T21:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-11-01T07:00"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false,
+      "note": "DST: tomorrow 07:00 is PST (-08:00)"
+    },
+    {
+      "id": 30,
+      "input": "buy groceries for the week in 3 days",
+      "now": "2026-10-30T10:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-11-02"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false,
+      "note": "month boundary"
+    },
+    {
+      "id": 31,
+      "input": "call grandma before the end of the month",
+      "now": "2026-10-30T10:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    },
+    {
+      "id": 32,
+      "input": "renew car registration, it expires soon!",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          null
+        ],
+        "priority": "high"
+      },
+      "relative_date": false,
+      "clarify_ok": true,
+      "note": "FR-9: urgent, no date: ask or no deadline, never invent"
+    },
+    {
+      "id": 33,
+      "input": "book a doctor's appointment ASAP, my knee is getting worse",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          null,
+          "2026-10-28"
+        ],
+        "priority": "high"
+      },
+      "relative_date": false,
+      "clarify_ok": true
+    },
+    {
+      "id": 34,
+      "input": "submit the timesheet next Friday",
+      "now": "2026-10-30T10:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-11-06"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false,
+      "note": "next Friday said on a Friday"
+    },
+    {
+      "id": 35,
+      "input": "send the invoice to the client this Friday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-10-30"
+        ],
+        "priority": "medium"
+      },
+      "relative_date": true,
+      "clarify_ok": false
+    }
+  ]
+}

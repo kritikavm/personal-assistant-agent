@@ -1,0 +1,80 @@
+{
+  "set": "capture",
+  "started": "2026-10-16T19:22:21-07:00",
+  "finished": "2026-10-16T19:22:27-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "209897bd",
+  "code_version": "a50fb65+dirty",
+  "fixture": "base",
+  "summary": {
+    "cases": 1,
+    "run": 1,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "category": {
+      "correct": 1,
+      "of": 1,
+      "score": 1.0,
+      "target": 0.9,
+      "met": true
+    },
+    "deadline": {
+      "correct": 1,
+      "of": 1,
+      "score": 1.0,
+      "target": 0.9,
+      "met": true
+    },
+    "priority": {
+      "correct": 1,
+      "of": 1,
+      "score": 1.0,
+      "target": 0.8,
+      "met": true
+    },
+    "assumptions": {
+      "stated": 0,
+      "of": 0
+    },
+    "passed": 1
+  },
+  "cases": [
+    {
+      "id": 32,
+      "input": "renew car registration, it expires soon!",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          null
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Renew car registration",
+        "description": "Car registration expires soon.",
+        "category": "errands",
+        "priority": "high",
+        "assumptions": [
+          "Priority high because 'expires soon' signals near-deadline urgency.",
+          "No deadline set: no expiry date was given.",
+          "Category errands as the best fit.",
+          "No duplicate found in existing tasks."
+        ],
+        "clarifying_question": "What is the exact expiry date of the registration?"
+      },
+      "question": "What is the exact expiry date of the registration?",
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4866,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    }
+  ]
+}

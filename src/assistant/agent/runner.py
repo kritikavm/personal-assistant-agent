@@ -90,6 +90,8 @@ class FailureKind(StrEnum):
     api_key_auth = "api_key_auth"  # session would bill an API key (S-7)
     unsafe_session = "unsafe_session"  # built-in tools, plugins or settings showed up (S-5)
     step_limit = "step_limit"  # max_turns reached
+    malformed_output = "malformed_output"  # proposal still invalid after one retry (FR-25)
+    no_proposal = "no_proposal"  # the session ended without a submit_* call
     api_error = "api_error"  # other API failure (overloaded, server error, bad request)
     cli_missing = "cli_missing"
     sdk_error = "sdk_error"
@@ -240,59 +242,115 @@ class SessionResult:
 QueryFn = Callable[..., AsyncIterator[Any]]
 
 
-async def run_session(prompt: str, options: ClaudeAgentOptions, query_fn: QueryFn | None = None) -> SessionResult:
-    """One session. Raises AgentFailure; never retries, never falls back (S-8)."""
+class _Turn:
+    """Checks one turn's messages. `init` carries over between turns of a conversation."""
+
+    def __init__(self, options: ClaudeAgentOptions, init: dict[str, Any] | None = None):
+        self.allowed = tuple(options.allowed_tools)
+        self.servers = tuple(options.mcp_servers) if isinstance(options.mcp_servers, dict) else ()
+        self.init = init
+        self.texts: list[str] = []
+        self.assistant_error: str | None = None
+        self.rate_limits: list[str] = []
+
+    def handle(self, message: Any) -> SessionResult | None:
+        """Raises AgentFailure on anything unsafe or failed; returns the result at the end of the turn."""
+        if isinstance(message, SystemMessage) and message.subtype == "init":
+            self.init = dict(message.data)
+            problems = init_problems(self.init, self.allowed, self.servers)
+            if problems:
+                raise AgentFailure(problems[0][0], ";".join(p[1] for p in problems))
+        elif isinstance(message, RateLimitEvent):
+            self.rate_limits.append(str(getattr(message.rate_limit_info, "status", "")))
+            failure = rate_limit_failure(message.rate_limit_info)
+            if failure:
+                raise failure
+        elif isinstance(message, AssistantMessage):
+            if self.init is None:
+                raise AgentFailure(FailureKind.unsafe_session, "no_init_before_reply")
+            if message.error:
+                self.assistant_error = message.error
+            self.texts.extend(block.text for block in message.content if isinstance(block, TextBlock))
+        elif isinstance(message, ResultMessage):
+            if message.is_error:
+                raise AgentFailure(classify_result(message.subtype, message.api_error_status, self.assistant_error), message.subtype)
+            if self.init is None:
+                raise AgentFailure(FailureKind.unsafe_session, "no_init")
+            return SessionResult(
+                text=(message.result if message.result is not None else "".join(self.texts)).strip(),
+                init=self.init,
+                num_turns=message.num_turns,
+                duration_ms=message.duration_ms,
+                session_id=message.session_id,
+                rate_limits=self.rate_limits,
+            )
+        return None
+
+    async def consume(self, stream: AsyncIterator[Any]) -> SessionResult:
+        try:
+            async for message in stream:
+                result = self.handle(message)
+                if result is not None:
+                    return result
+        except AgentFailure:
+            raise
+        except ClaudeSDKError as e:
+            raise AgentFailure(classify_exception(e, self.assistant_error), e.__class__.__name__) from None
+        raise AgentFailure(classify_result(None, None, self.assistant_error), "no_result")
+
+
+def _prepare() -> None:
     check_billing(os.environ)
     clean_process_env()
+
+
+async def run_session(prompt: str, options: ClaudeAgentOptions, query_fn: QueryFn | None = None) -> SessionResult:
+    """One single-turn session. Raises AgentFailure; never retries, never falls back (S-8)."""
+    _prepare()
     query_fn = query_fn or claude_agent_sdk.query
-    allowed = tuple(options.allowed_tools)
-    servers = tuple(options.mcp_servers) if isinstance(options.mcp_servers, dict) else ()
-    init: dict[str, Any] | None = None
-    texts: list[str] = []
-    assistant_error: str | None = None
-    rate_limits: list[str] = []
     stream = query_fn(prompt=prompt, options=options)
     try:
-        async for message in stream:
-            if isinstance(message, SystemMessage) and message.subtype == "init":
-                init = dict(message.data)
-                problems = init_problems(init, allowed, servers)
-                if problems:
-                    kind = problems[0][0]
-                    raise AgentFailure(kind, ";".join(p[1] for p in problems))
-            elif isinstance(message, RateLimitEvent):
-                rate_limits.append(str(getattr(message.rate_limit_info, "status", "")))
-                failure = rate_limit_failure(message.rate_limit_info)
-                if failure:
-                    raise failure
-            elif isinstance(message, AssistantMessage):
-                if init is None:
-                    raise AgentFailure(FailureKind.unsafe_session, "no_init_before_reply")
-                if message.error:
-                    assistant_error = message.error
-                texts.extend(block.text for block in message.content if isinstance(block, TextBlock))
-            elif isinstance(message, ResultMessage):
-                if message.is_error:
-                    raise AgentFailure(classify_result(message.subtype, message.api_error_status, assistant_error), message.subtype)
-                if init is None:
-                    raise AgentFailure(FailureKind.unsafe_session, "no_init")
-                return SessionResult(
-                    text=(message.result if message.result is not None else "".join(texts)).strip(),
-                    init=init,
-                    num_turns=message.num_turns,
-                    duration_ms=message.duration_ms,
-                    session_id=message.session_id,
-                    rate_limits=rate_limits,
-                )
-    except AgentFailure:
-        raise
-    except ClaudeSDKError as e:
-        raise AgentFailure(classify_exception(e, assistant_error), e.__class__.__name__) from None
+        return await _Turn(options).consume(stream)
     finally:
         aclose = getattr(stream, "aclose", None)
         if aclose:
             await aclose()
-    raise AgentFailure(classify_result(None, None, assistant_error), "no_result")
+
+
+class Conversation:
+    """A multi-turn session (e.g. a clarifying question and its answer, ARCHITECTURE §6.2).
+
+    Same checks as run_session on every turn. Use as `async with Conversation(options) as c:`.
+    """
+
+    def __init__(self, options: ClaudeAgentOptions, client_factory: Callable[..., Any] | None = None):
+        self.options = options
+        self.client_factory = client_factory or claude_agent_sdk.ClaudeSDKClient
+        self.client: Any = None
+        self.init: dict[str, Any] | None = None
+
+    async def __aenter__(self) -> "Conversation":
+        _prepare()
+        self.client = self.client_factory(options=self.options)
+        try:
+            await self.client.connect()
+        except ClaudeSDKError as e:
+            raise AgentFailure(classify_exception(e), e.__class__.__name__) from None
+        return self
+
+    async def send(self, prompt: str) -> SessionResult:
+        turn = _Turn(self.options, self.init)
+        try:
+            await self.client.query(prompt)
+        except ClaudeSDKError as e:
+            raise AgentFailure(classify_exception(e), e.__class__.__name__) from None
+        result = await turn.consume(self.client.receive_response())
+        self.init = turn.init
+        return result
+
+    async def __aexit__(self, *exc: Any) -> None:
+        if self.client is not None:
+            await self.client.disconnect()
 
 
 # --- Login check for doctor (no model call) --------------------------------------------------------

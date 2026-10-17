@@ -255,6 +255,22 @@ class TaskStore:
         self._save_open(tasks)
         return updated
 
+    def next_id(self, tasks: list[Task] | None = None) -> str:
+        """`t-NNNN`, one more than the highest number used in either file (FR-4: IDs come from code)."""
+        everything = (tasks if tasks is not None else self.load_open()) + [t for ts in self.load_completed().values() for t in ts]
+        numbers = [int(t.id[2:]) for t in everything if t.id.startswith("t-") and t.id[2:].isdigit()]
+        return f"t-{max(numbers, default=0) + 1:04d}"
+
+    def add(self, fields: dict[str, Any]) -> Task:
+        """Create an open task from proposal fields. Code sets id, status and timestamps (FR-5)."""
+        tasks = self.load_open()
+        now = self.now().isoformat()
+        data = {k: (v.isoformat() if isinstance(v, (date, datetime)) else v) for k, v in fields.items() if v is not None}
+        data |= {"id": self.next_id(tasks), "status": "todo", "created_at": now, "updated_at": now}
+        task = self._validated(data)
+        self._save_open([*tasks, task])
+        return task
+
     def delete(self, task_id: str) -> Task:
         tasks = self.load_open()
         i = self._find(tasks, task_id)

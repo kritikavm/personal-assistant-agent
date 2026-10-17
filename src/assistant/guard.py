@@ -169,6 +169,19 @@ class StartupResult:
         return self.calendar is CalendarAccess.connected
 
 
+def startup_checks(
+    data_dir: Path,
+    env: Mapping[str, str] | None = None,
+    tokens: TokenInfoSource | None = None,
+) -> StartupResult:
+    """Billing → preferences → scope, without the lock (for flows that lock only to write)."""
+    env = os.environ if env is None else env
+    check_billing(env)
+    prefs = config.load_preferences(data_dir / config.PREFERENCES_FILE)
+    calendar = check_calendar_scope(tokens or NoGoogleToken())
+    return StartupResult(prefs, calendar, sdk_env(env))
+
+
 @contextmanager
 def startup_guard(
     data_dir: Path,
@@ -180,9 +193,5 @@ def startup_guard(
     Raises RunLockedError, BillingCredentialError, config.PreferencesError or
     ScopeError. Nothing else runs when it raises.
     """
-    env = os.environ if env is None else env
     with run_lock(data_dir):
-        check_billing(env)
-        prefs = config.load_preferences(data_dir / config.PREFERENCES_FILE)
-        calendar = check_calendar_scope(tokens or NoGoogleToken())
-        yield StartupResult(prefs, calendar, sdk_env(env))
+        yield startup_checks(data_dir, env, tokens)

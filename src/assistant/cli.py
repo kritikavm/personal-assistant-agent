@@ -11,6 +11,8 @@ import typer
 
 from assistant import __version__, config
 from assistant.agent import runner
+from assistant.agent.tools import UNAVAILABLE, Snapshot
+from assistant.flows.capture import capture
 from assistant.guard import (
     BillingCredentialError,
     CalendarAccess,
@@ -21,6 +23,7 @@ from assistant.guard import (
     check_billing,
     check_calendar_scope,
     run_lock,
+    startup_checks,
     startup_guard,
 )
 from assistant.integrations.reminders import AGENT_LIST, AppleRemindersClient, ReminderAccess, RemindersClient
@@ -366,3 +369,80 @@ def smoke() -> None:
     typer.echo(f"Saved transcript: {'YES: ' + ', '.join(map(str, transcripts)) if transcripts else 'none found under ' + str(claude_projects_dir())}")
     if result.text != SMOKE_REPLY or transcripts:
         raise typer.Exit(code=1)
+
+
+# --- add (FR-7–FR-10, ARCHITECTURE §6.2) ------------------------------------------------------------
+
+
+def _show_proposal(p, tz) -> None:
+    deadline = p.deadline_value(tz)
+    if deadline is None:
+        when = "-"
+    elif isinstance(deadline, datetime):
+        when = deadline.strftime("%Y-%m-%d %H:%M (%A)")
+    else:
+        when = deadline.strftime("%Y-%m-%d (%A)")
+    typer.echo(f"Task:      {p.title}")
+    if p.description:
+        typer.echo(f"Details:   {p.description}")
+    typer.echo(f"Category:  {p.category}")
+    typer.echo(f"Priority:  {p.priority.value}")
+    typer.echo(f"Deadline:  {when}")
+    typer.echo(f"Estimate:  {f'{p.estimated_minutes} min' if p.estimated_minutes else '-'}")
+    if p.assumptions:
+        typer.echo("Assumptions:")
+        for line in p.assumptions:
+            typer.echo(f"  - {line}")
+
+
+@app.command()
+def add(
+    text: str = typer.Argument(..., help='The task in plain language, e.g. "buy milk tomorrow".'),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Save without asking (the parsed task is still printed)."),
+) -> None:
+    """Capture a task from plain language. Shows the parsed task and asks before saving."""
+    data_dir = config.default_data_dir()
+    try:
+        start = startup_checks(data_dir)
+    except (BillingCredentialError, ScopeError) as e:
+        raise _fail([str(e)]) from None
+    except config.PreferencesError as e:
+        raise _fail([f"preferences: {p}" for p in e.problems]) from None
+    prefs = start.prefs
+    store = TaskStore(data_dir, prefs.tz)
+    try:
+        open_tasks, completed = store.load_open(), store.load_completed()
+    except TaskStoreError as e:
+        raise _fail(e.problems) from None
+    snap = Snapshot(prefs, store.now(), UNAVAILABLE, open_tasks, completed)
+
+    def ask(question: str) -> str:
+        typer.echo(f"Question:  {question}")
+        return typer.prompt("Answer (Enter to save without a deadline)", default="", show_default=False)
+
+    with RunLog(data_dir, "add", prefs.tz) as log:
+        try:
+            outcome = asyncio.run(capture(text, snap, cwd=data_dir, answer=None if yes else ask, log=log))
+        except runner.AgentFailure as e:
+            log.event("capture_failed", status=e.kind.value)
+            raise _fail([f"couldn't capture the task: {e.kind.value}. Nothing was saved."]) from None
+        log.event("task_proposed", count=len(outcome.turns), attempt=len(outcome.error_paths) + 1)
+        typer.echo("")
+        _show_proposal(outcome.proposal, prefs.tz)
+        if outcome.deadline_dropped:
+            typer.echo(f"Note:      saved without a deadline (unanswered question: {outcome.question})")
+        if not yes and not typer.confirm("Save?", default=True):
+            log.event("task_not_saved")
+            typer.echo("Not saved.")
+            return
+        try:
+            with run_lock(data_dir):
+                task = store.add(outcome.proposal.task_fields(prefs.tz))
+        except RunLockedError as e:
+            log.error(e)
+            raise _fail([str(e), "Not saved."]) from None
+        except TaskStoreError as e:
+            log.error(e)
+            raise _fail(e.problems) from None
+        log.event("task_created", task_id=task.id)
+    typer.echo(f"Saved as {task.id}.")

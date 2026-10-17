@@ -1,0 +1,1297 @@
+{
+  "set": "capture",
+  "started": "2026-10-16T15:07:42-07:00",
+  "finished": "2026-10-16T19:16:49-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "ed63698b",
+  "code_version": "a50fb65+dirty",
+  "fixture": "base",
+  "summary": {
+    "cases": 35,
+    "run": 35,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "category": {
+      "correct": 35,
+      "of": 35,
+      "score": 1.0,
+      "target": 0.9,
+      "met": true
+    },
+    "deadline": {
+      "correct": 35,
+      "of": 35,
+      "score": 1.0,
+      "target": 0.9,
+      "met": true
+    },
+    "priority": {
+      "correct": 34,
+      "of": 35,
+      "score": 0.971,
+      "target": 0.8,
+      "met": true
+    },
+    "assumptions": {
+      "stated": 24,
+      "of": 24
+    },
+    "passed": 34
+  },
+  "cases": [
+    {
+      "id": 1,
+      "input": "buy milk tomorrow",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-29"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Buy milk",
+        "category": "shopping",
+        "priority": "medium",
+        "deadline": "2026-10-29",
+        "assumptions": [
+          "tomorrow = 2026-10-29 (today is 2026-10-28, per the session calendar)",
+          "Category shopping chosen as best fit",
+          "No duplicate 'buy milk' task found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 7760,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 2,
+      "input": "order printer paper, no rush",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          null
+        ],
+        "priority": "low"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Order printer paper",
+        "category": "shopping",
+        "priority": "low",
+        "assumptions": [
+          "\"no rush\" signals low priority",
+          "No deadline given, so none set",
+          "Existing task 'Order printer ink' (t-0109) is related but not a duplicate"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 7112,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 3,
+      "input": "get a birthday present for Sam by this Friday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-30"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Get a birthday present for Sam",
+        "category": "shopping",
+        "priority": "medium",
+        "deadline": "2026-10-30",
+        "assumptions": [
+          "this Friday = 2026-10-30 (today is Wednesday 2026-10-28)",
+          "No time given, so the deadline is date-only",
+          "Category shopping, since it involves buying a gift",
+          "No duplicate found in existing tasks (the only similar one is a birthday card for Alex)"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 6974,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 4,
+      "input": "urgent: buy cold medicine tonight",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-28"
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Buy cold medicine",
+        "category": "shopping",
+        "priority": "high",
+        "deadline": "2026-10-28",
+        "assumptions": [
+          "tonight = 2026-10-28 (today); no specific time given, so deadline is date only",
+          "Marked high priority because the text says 'urgent'",
+          "Category: shopping (buying an item)",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5986,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 5,
+      "input": "buy new running shoes before the end of the month",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Buy new running shoes",
+        "category": "shopping",
+        "priority": "medium",
+        "deadline": "2026-10-31",
+        "assumptions": [
+          "end of the month = 2026-10-31 (today is 2026-10-28)",
+          "No urgency words, so priority is the default medium",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4640,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 6,
+      "input": "restock coffee beans in 3 days",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Restock coffee beans",
+        "category": "shopping",
+        "priority": "medium",
+        "deadline": "2026-10-31",
+        "assumptions": [
+          "in 3 days = 2026-10-31 (today is 2026-10-28)",
+          "Category shopping chosen as best fit",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4604,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 7,
+      "input": "send the quarterly report to my manager by next Friday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-11-06"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Send quarterly report to manager",
+        "category": "job",
+        "priority": "medium",
+        "deadline": "2026-11-06",
+        "assumptions": [
+          "next Friday = 2026-11-06 (today is Wednesday 2026-10-28)",
+          "Category 'job' chosen because it is work-related",
+          "No duplicate found in existing tasks",
+          "No time of day given, so deadline is date-only"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5059,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 8,
+      "input": "prepare slides for Monday's team meeting, important",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-11-02"
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Prepare slides for team meeting",
+        "description": "Prepare slides for Monday's team meeting.",
+        "category": "job",
+        "priority": "high",
+        "deadline": "2026-11-02",
+        "assumptions": [
+          "Monday = 2026-11-02 (the next Monday after today, Wed 2026-10-28)",
+          "Category 'job' assumed since it's a team meeting",
+          "Priority high because user said 'important'",
+          "No time given for the meeting, so deadline is date only",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 15101,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 9,
+      "input": "update my resume whenever I get a chance",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          null
+        ],
+        "priority": "low"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Update my resume",
+        "category": "job",
+        "priority": "low",
+        "assumptions": [
+          "'Whenever I get a chance' is a clear low-urgency signal, so priority is low.",
+          "No deadline given, so none set.",
+          "Possible duplicate: existing open task t-0113 'Update resume' (job, medium, 120 min)."
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4424,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 10,
+      "input": "reply to the recruiter email asap",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          null,
+          "2026-10-28"
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Reply to the recruiter email",
+        "category": "job",
+        "priority": "high",
+        "assumptions": [
+          "'asap' indicates high priority",
+          "No deadline set: no date or time was given",
+          "Category 'job' chosen because it's about a recruiter",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 3970,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 11,
+      "input": "submit expense report by 2026-11-03 at 17:00",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-11-03T17:00"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Submit expense report",
+        "category": "job",
+        "priority": "medium",
+        "deadline": "2026-11-03T17:00",
+        "assumptions": [
+          "Deadline given explicitly: 2026-11-03 17:00 (Tuesday), America/Los_Angeles",
+          "Category 'job' guessed since expense reports are work-related",
+          "Priority medium: no urgency wording in the text",
+          "Possible duplicate: existing task t-0101 'Submit expense report' (due 2026-10-28T17:00, todo); this was added as a new task with the new deadline"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5100,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 12,
+      "input": "book a 1:1 with my skip-level this week",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          null,
+          "2026-10-30",
+          "2026-11-01"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Book a 1:1 with my skip-level",
+        "category": "job",
+        "priority": "medium",
+        "deadline": "2026-10-30",
+        "assumptions": [
+          "\"this week\" = the current week (Mon 2026-10-26 to Sun 2026-11-01); deadline set to Friday 2026-10-30, the last working day",
+          "Deadline applies to booking the 1:1; no time was given",
+          "Category is job since it's a work meeting",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5987,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 13,
+      "input": "water the fiddle leaf fig tomorrow morning",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          "2026-10-29"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Water the fiddle leaf fig",
+        "category": "plants",
+        "priority": "medium",
+        "deadline": "2026-10-29",
+        "assumptions": [
+          "tomorrow = 2026-10-29 (Thursday)",
+          "\"morning\" gave no specific time, so the deadline is date-only",
+          "No duplicate found; existing 'Water the herbs' is a different task"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 5,
+      "duration_ms": 9123,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 14,
+      "input": "repot the monstera this weekend",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          "2026-10-31",
+          "2026-11-01"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Repot the monstera",
+        "category": "plants",
+        "priority": "medium",
+        "deadline": "2026-11-01",
+        "assumptions": [
+          "this weekend = Saturday 2026-10-31 to Sunday 2026-11-01; deadline set to the end of the weekend, 2026-11-01",
+          "Possible duplicate: existing task t-0104 'Repot the monstera' (deadline 2026-10-21, now overdue, still todo). Submitted as a new task as requested.",
+          "Today's date taken as 2026-10-28 per the calendar provided"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5822,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 15,
+      "input": "fertilize the herbs, low priority",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          null
+        ],
+        "priority": "low"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Fertilize the herbs",
+        "category": "plants",
+        "priority": "low",
+        "assumptions": [
+          "No deadline given, so none set.",
+          "Category plants chosen since this is about herbs.",
+          "Existing task 'Water the herbs' (t-0108) is related but not a duplicate."
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4668,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 16,
+      "input": "check the orchids for pests in 3 days",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Check the orchids for pests",
+        "category": "plants",
+        "priority": "medium",
+        "deadline": "2026-10-31",
+        "assumptions": [
+          "in 3 days = 2026-10-31 (today is 2026-10-28)",
+          "No duplicate task found in the existing list",
+          "Priority is medium because no urgency signals were given"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 6816,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 17,
+      "input": "move the succulents inside before the frost on Sunday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "plants",
+        "deadline": [
+          "2026-11-01"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Move the succulents inside",
+        "description": "Bring the succulents indoors before the frost on Sunday.",
+        "category": "plants",
+        "priority": "medium",
+        "deadline": "2026-11-01",
+        "assumptions": [
+          "Sunday = 2026-11-01 (the upcoming Sunday)",
+          "Deadline set to the day of the frost; no time given, so no time set",
+          "No duplicate found in existing tasks",
+          "Priority medium: no explicit urgency words"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5554,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 18,
+      "input": "call mom on her birthday next Tuesday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          "2026-11-03"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Call mom on her birthday",
+        "category": "personal",
+        "priority": "medium",
+        "deadline": "2026-11-03",
+        "assumptions": [
+          "next Tuesday = 2026-11-03 (today is Wednesday 2026-10-28)",
+          "No time of day given, so the deadline is date only",
+          "No duplicate task found in the existing list",
+          "Category 'personal' chosen as the best fit"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 14523,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 19,
+      "input": "practice guitar for 30 minutes",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          null
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Practice guitar",
+        "description": "Practice guitar for 30 minutes",
+        "category": "personal",
+        "priority": "medium",
+        "estimated_minutes": 30,
+        "assumptions": [
+          "No deadline given, so none set",
+          "Category 'personal' chosen as the best fit for a hobby",
+          "Priority medium (default); no urgency signals",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4375,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 20,
+      "input": "schedule a dentist checkup, it's important",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          null
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Schedule a dentist checkup",
+        "description": "Schedule a dentist checkup appointment.",
+        "category": "personal",
+        "priority": "high",
+        "assumptions": [
+          "Priority high because the user said it's important.",
+          "No deadline given, so none set.",
+          "Category personal (health-related) as the best fit among available categories.",
+          "No duplicate dentist task found in existing tasks."
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4911,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 21,
+      "input": "journal for 20 minutes tonight",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          "2026-10-28"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Journal",
+        "description": "Journal for 20 minutes tonight",
+        "category": "personal",
+        "priority": "medium",
+        "deadline": "2026-10-28",
+        "estimated_minutes": 20,
+        "assumptions": [
+          "tonight = 2026-10-28 (today)",
+          "No specific time given, so deadline is date only",
+          "Category 'personal' chosen as best fit",
+          "No duplicate task found in existing list"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5696,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 22,
+      "input": "plan a weekend trip with Alex next Saturday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          "2026-11-07"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Plan a weekend trip with Alex",
+        "description": "Plan a weekend trip with Alex, for next Saturday.",
+        "category": "personal",
+        "priority": "medium",
+        "deadline": "2026-11-07",
+        "assumptions": [
+          "next Saturday = 2026-11-07 (Saturday of the following week, from today 2026-10-28)",
+          "Used 2026-11-07 as the deadline; it's unclear whether the trip or the planning is due then",
+          "Category personal chosen as the best fit",
+          "No duplicate found in existing tasks (the only Alex task is a birthday card)"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 8909,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 23,
+      "input": "drop off the dry cleaning tomorrow",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-10-29"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Drop off the dry cleaning",
+        "category": "errands",
+        "priority": "medium",
+        "deadline": "2026-10-29",
+        "assumptions": [
+          "tomorrow = 2026-10-29",
+          "Existing task t-0106 'Pick up dry cleaning' is a different action (pick up vs drop off), so not treated as a duplicate",
+          "No time given, so deadline is date only",
+          "Priority medium (default, no urgency signals)"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5041,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 24,
+      "input": "return the library books by this Saturday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Return the library books",
+        "category": "errands",
+        "priority": "medium",
+        "deadline": "2026-10-31",
+        "assumptions": [
+          "this Saturday = 2026-10-31 (today is Wednesday 2026-10-28)",
+          "Existing task t-0103 'Renew library books' is related but is about renewing, not returning, so I treated this as a separate task",
+          "Priority medium: no urgency signals given"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5860,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 25,
+      "input": "get the car's oil changed sometime, no rush",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          null
+        ],
+        "priority": "low"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Get the car's oil changed",
+        "category": "errands",
+        "priority": "low",
+        "assumptions": [
+          "No deadline given ('sometime'), so none set",
+          "'no rush' = low priority",
+          "Category errands chosen as best fit",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4144,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 26,
+      "input": "mail the tax form, urgent, due Nov 2",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-11-02"
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Mail the tax form",
+        "category": "errands",
+        "priority": "high",
+        "deadline": "2026-11-02",
+        "assumptions": [
+          "Nov 2 = 2026-11-02 (Monday)",
+          "Category errands chosen since mailing is an errand",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 9329,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 27,
+      "input": "pick up the package from the post office in 2 days",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-10-30"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Pick up the package from the post office",
+        "category": "errands",
+        "priority": "medium",
+        "deadline": "2026-10-30",
+        "assumptions": [
+          "in 2 days = 2026-10-30 (today is 2026-10-28)",
+          "No time given, so the deadline is date-only",
+          "No duplicate found in existing tasks (t-0112 is a return to Example Store, a different task)"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 6068,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 28,
+      "input": "finish the onboarding paperwork by Monday",
+      "now": "2026-11-02T09:00:00-08:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          null,
+          "2026-11-09"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Finish the onboarding paperwork",
+        "category": "job",
+        "priority": "medium",
+        "deadline": "2026-11-09",
+        "assumptions": [
+          "'Monday' = 2026-11-09, since today is already Monday 2026-11-02",
+          "Category 'job' assumed because onboarding paperwork is likely work-related",
+          "No duplicate found in existing tasks",
+          "No duration given, so no estimate"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5226,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 29,
+      "input": "drop the parcel at the post office tomorrow at 7am",
+      "now": "2026-10-31T21:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-11-01T07:00"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Drop the parcel at the post office",
+        "category": "errands",
+        "priority": "medium",
+        "deadline": "2026-11-01T07:00",
+        "assumptions": [
+          "tomorrow = 2026-11-01 (Sunday)",
+          "7am = 07:00 local time",
+          "Category errands chosen as best fit",
+          "No duplicate found in existing tasks (the 'Return package to Example Store' task looks different)"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4655,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 30,
+      "input": "buy groceries for the week in 3 days",
+      "now": "2026-10-30T10:00:00-07:00",
+      "expected": {
+        "category": "shopping",
+        "deadline": [
+          "2026-11-02"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Buy groceries for the week",
+        "category": "shopping",
+        "priority": "medium",
+        "deadline": "2026-11-02",
+        "assumptions": [
+          "in 3 days = 2026-11-02 (today is 2026-10-30)",
+          "Treated as a deadline of that date, no time given",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4422,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 31,
+      "input": "call grandma before the end of the month",
+      "now": "2026-10-30T10:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Call grandma",
+        "category": "personal",
+        "priority": "medium",
+        "deadline": "2026-10-31",
+        "assumptions": [
+          "end of the month = 2026-10-31 (today is 2026-10-30)",
+          "Category personal as it's a family call",
+          "Priority medium; no urgency words given",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5239,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 32,
+      "input": "renew car registration, it expires soon!",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          null
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Renew car registration",
+        "description": "Registration expires soon.",
+        "category": "errands",
+        "priority": "medium",
+        "assumptions": [
+          "No expiry date given, so no deadline set.",
+          "Category errands chosen as the best fit.",
+          "Priority medium: 'expires soon' is not an explicit urgency signal like 'urgent' or 'asap'.",
+          "No duplicate found in existing tasks."
+        ],
+        "clarifying_question": "What is the registration expiry date?"
+      },
+      "question": "What is the registration expiry date?",
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 7286,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": false,
+        "assumptions": null
+      },
+      "passed": false
+    },
+    {
+      "id": 33,
+      "input": "book a doctor's appointment ASAP, my knee is getting worse",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          null,
+          "2026-10-28"
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Book a doctor's appointment",
+        "description": "Knee is getting worse; book an appointment ASAP.",
+        "category": "personal",
+        "priority": "high",
+        "assumptions": [
+          "'ASAP' treated as high priority",
+          "No explicit deadline given, so none set",
+          "Category 'personal' chosen for health; no existing duplicate found in tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 6538,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 34,
+      "input": "submit the timesheet next Friday",
+      "now": "2026-10-30T10:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-11-06"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Submit the timesheet",
+        "category": "job",
+        "priority": "medium",
+        "deadline": "2026-11-06",
+        "assumptions": [
+          "next Friday = 2026-11-06",
+          "Category 'job' chosen since a timesheet is work-related",
+          "No duplicate timesheet task found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5583,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 35,
+      "input": "send the invoice to the client this Friday",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "job",
+        "deadline": [
+          "2026-10-30"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Send the invoice to the client",
+        "category": "job",
+        "priority": "medium",
+        "deadline": "2026-10-30",
+        "assumptions": [
+          "this Friday = 2026-10-30",
+          "Category 'job' chosen because the invoice is client work",
+          "No time given, so the deadline is date-only",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4822,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    }
+  ]
+}
