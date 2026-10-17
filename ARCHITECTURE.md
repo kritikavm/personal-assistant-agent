@@ -114,7 +114,7 @@ All tools live in the in-process MCP server `pa`. The SDK sees them as `mcp__pa_
 | `get_default_reminders` | run | Default-rule reminders code has already computed, so extras don't duplicate them | `{}` | `{reminders: [{title, fire_at, source_type: meeting\|task\|birthday, source_id}]}` | Read | Plain-code result from this run's data snapshot (FR-17). Shown to Claude for context only; the planner uses its own copy. |
 | `find_free_time` | run, ask | Free blocks on a day | `{date: date, min_minutes?: int}` | `{working_hours, busy: [{start, end, source_id}], free: [{start, end, minutes}], calendar_available: bool}` | Read | Plain-code calculation from calendar + working hours. Timed events are busy; an all-day event blocks the working day only if it's `opaque` (e.g. out of office), so birthdays and holidays don't. On today, time before now isn't free. Calendar unavailable → nothing reported free. A date outside today…today+7 is denied. |
 | `submit_task` | add | Parsed task proposal | `{title, description?, category, priority, deadline?, estimated_minutes?, assumptions: [str], clarifying_question?: str}` | `{accepted: bool, errors?: [str]}` | Proposal | Validated by pydantic in the handler. The JSON schema the SDK sees has types and descriptions only: the SDK rejects schema violations before the handler runs, which would skip the retry count and the log (FR-25). `category` must be in preferences; priority defaults to `medium` (FR-7). No write. Code confirms (FR-10) and writes. |
-| `submit_daily_plan` | run | Brief + extra reminders | `{brief: {summary, schedule[], due_today[], overdue[], focus[], free_blocks[], data_gaps[]}, extra_reminders: [{title, fire_at, source_type: meeting\|task\|birthday, source_id, reason}]}` | `{accepted: bool, errors?: [str]}` | Proposal | Schema-validated. `source_id` must exist in data the tools returned this session; `reason` is required. No write. Planner validates further (§6.1). |
+| `submit_daily_plan` | run | Brief text + extra reminders | `{brief: {summary, focus[], data_gaps[]}, extra_reminders: [{title, fire_at, source_type: meeting\|task\|birthday, source_id, reason}]}` | `{accepted: bool, errors?: [str]}` | Proposal | Validated by pydantic in the handler (schema has types and descriptions only, as for `submit_task`). Code, not Claude, fills the brief's schedule, due-today, overdue and free-time lists from the snapshot (§6.1). `source_id` must be an ID of that type returned by a tool this session; `reason` is required; a `fire_at` without an offset is read in my time zone. No write. Planner validates further (§6.1). |
 | `submit_answer` | ask | Final answer | `{answer: str, sources: [{type: event\|task, id, title}], data_gaps: [str]}` | `{accepted: bool, errors?: [str]}` | Proposal | Cited IDs must exist in data returned this session (FR-20). |
 | `propose_task_change` | ask | Task change I asked for | `{action: create\|update\|complete\|delete, task_id?, changes?, reason}` | `{queued: true}` | Proposal | Only queues the change. After the session, CLI shows it and needs explicit `y` (FR-21). |
 
@@ -161,7 +161,7 @@ The current time is passed in the system prompt, not via a tool.
 | `tasks.json` | Open tasks `[Task]` | Task store |
 | `completed_tasks.json` | `{"YYYY-MM-DD": [Task]}` (FR-11a) | Task store |
 | `backups/` | Timestamped copy before each task-file write; keep last 20 | Task store |
-| `state.json` | `reminders: {key → {reminder_id, title, fire_at, source_type, source_id, kind, content_hash}}`, `last_runs: {scheduled: {date, status}, manual: {…}}` with `status` one of `ok`, `partial` (finished with a data gap, e.g. calendar or Reminders unavailable) or `failed`, `schema_version` | Reconciler, runner, `state rebuild` |
+| `state.json` | `reminders: {key → {reminder_id, title, fire_at, source_type, source_id, kind, content_hash}}`, `last_runs: {scheduled: {date, status}, manual: {…}}` with `status` one of `ok`, `partial` (finished, but the calendar or tasks were unavailable, Reminders writes were blocked, or a write failed; a configured calendar that doesn't exist (404) is a data gap but stays `ok`) or `failed`, `schema_version` | Reconciler, runner, `state rebuild` |
 | `briefs/YYYY-MM-DD.md` | Rendered morning brief (latest run of the day overwrites). Files older than 30 days are deleted at the start of each run (S-13). | Daily run |
 | `logs/YYYY-MM-DD.jsonl` | One JSON line per event: run start/end, step, tool call, reminder change, error. IDs, statuses, counts and error codes only; no titles, task text or descriptions (S-13). Files older than 30 days are deleted at the start of each run. | Every flow |
 | `secrets/google_oauth_client.json` | Google OAuth client secret file (S-10). Never committed. | Me (one-time setup) |
@@ -176,11 +176,11 @@ The current time is passed in the system prompt, not via a tool.
 
 ### 6.1 Daily run (`run scheduled` / `run now [--dry-run]`)
 
-1. **Guard:** take the lock → billing check → load and validate preferences → scope check on the Google token. `run scheduled` exits quietly if today's scheduled run already succeeded. `run now` always runs.
+1. **Guard:** take the lock → billing check → load and validate preferences → scope check on the Google token. `run scheduled` exits quietly if today's scheduled run already finished (`ok` or `partial`). A run whose AI step failed writes nothing but the log, so the next trigger runs again. `run now` always runs.
 2. **Preflight Reminders:** check Reminders access, that "Agent Reminders" exists, and that it belongs to the On My Mac account (S-14). If any check fails, set `reminders_blocked` with the reason (FR-23), add the reason to `brief.data_gaps`, and continue so the brief still gets written.
    - Also load `state.json`. If it's invalid (FR-23a), copy it to `backups/state-invalid-<time>.json` (once per distinct bad file), set `reminders_blocked` with reason "state invalid", and add it to `brief.data_gaps`. `state.json` isn't written this run (so `last_runs` isn't updated either). Nothing is rebuilt automatically.
    - If `state.json` is missing and "Agent Reminders" already holds items with a `[pa:]` marker, do the same (reason "state missing", no copy to back up). If the list holds no marked items, start with empty state. If the list can't be read, a missing `state.json` also blocks writes and isn't written.
-3. **Agent session (`run`):** Claude calls `get_preferences`, `get_tasks`, `get_calendar_events` (today…+7), `get_default_reminders`, `find_free_time` (today), then `submit_daily_plan` with the brief and any extra reminders.
+3. **Agent session (`run`):** Claude calls `get_preferences`, `get_tasks`, `get_calendar_events` (today…+7), `get_default_reminders`, `find_free_time` (today), then `submit_daily_plan` with the brief text (summary, focus, any data gaps code can't see) and any extra reminders. Code fills the brief's lists from the same snapshot: schedule (events overlapping today, all-day first), due today (deadline today and not yet passed), overdue (a date before today, or a time already passed), and free time (`find_free_time` for today). Code also adds every data gap it knows about, with the fix: calendar missing, a skipped calendar, unreadable tasks, blocked Reminders or invalid/missing state.
 4. **Build the plan (planner):**
    - **Defaults (code):** compute from preferences and the data snapshot: meetings 1 h before; tasks on the morning of the due day and 1 h before the deadline; birthdays at 20:00 the evening before; plus the brief item (`source_type: brief`) at today's brief time, or now + 1 min on a later manual run. Marked `kind: default`. A default whose time has already passed is skipped (the brief covers the item), e.g. a 09:00 meeting at the 08:00 run.
    - **Extras (AI):** drop any with `fire_at` in the past or beyond the 7-day window, unknown `source_id`s, ones at or after their own event start or deadline, or duplicates of a default. Keep at most `max_per_item` per source item (FR-18). Marked `kind: extra`. The `reason` isn't written to Reminders; the notes hold only the marker.
@@ -192,12 +192,12 @@ The current time is passed in the system prompt, not via a tool.
    - a deleted and a created reminder for the same item and kind are paired into one update, so a moved event or deadline moves its reminder (FR-15)
    - key no longer planned and still in the future (event moved or cancelled, task done) → delete
    - past reminders → leave alone in Reminders and drop from `state.json`
-   - if calendar data is unavailable this run, existing `meeting` and `birthday` reminders are kept, not deleted (FR-22)
-6. **Write.** With `--dry-run`, this step only prints the brief and the diff and writes one log line marked `dry_run` (FR-13). Otherwise:
+   - if calendar data is unavailable this run, existing `meeting` and `birthday` reminders are kept, not deleted (FR-22); if `tasks.json` can't be read, existing `task` reminders are kept the same way
+6. **Write.** With `--dry-run`, this step only prints the brief and the diff and writes log lines (the run's `run_start` is marked `dry_run`); the 30-day cleanup and the invalid-state backup copy are skipped too (FR-13). Otherwise:
    - Reminders changes, if not blocked. A reminder I deleted by hand is recreated if it needs an update and just dropped from state if it needs deleting. If a write fails, the rest are skipped and `state.json` records only what was written.
    - `state.json`.
    - `briefs/YYYY-MM-DD.md`.
-   - Notification with a neutral summary, counts only (S-15).
+   - Notification with a neutral summary, counts only (S-15), e.g. "Morning brief ready: 4 events, 2 tasks due, 2 overdue", plus ". Reminders not updated" when writes were blocked or failed.
    - Log line, and `last_runs` updated.
 
 ```mermaid
@@ -236,7 +236,7 @@ sequenceDiagram
     P->>F: read state.json
     P-->>C: diff (create / update / delete)
     alt dry-run
-        C->>F: log line (dry_run), print brief + diff
+        C->>F: log lines (dry_run), print brief + diff
     else normal run
         opt reminders not blocked
             C->>R: apply diff (fixed list only)
@@ -304,15 +304,16 @@ Plain code only, no AI. Run only by me, never automatically (FR-23a).
 | Token has a write scope (S-2) | Startup scope check | Refuse to start with a clear message. Nothing runs. |
 | No Google token yet (not connected) | Startup scope check finds no Keychain token | Not an error: calendar treated as unavailable (FR-22), the run continues with tasks only, and `doctor` says "Google Calendar: not connected". |
 | Token scopes can't be confirmed | Startup scope check: tokeninfo fails, has no `scope` field, or lacks `calendar.events.readonly` | Not a refusal: the calendar isn't used this run and is treated as unavailable (FR-22). `doctor` warns that the scopes couldn't be checked. Only a confirmed extra scope refuses to start (S-2). |
-| Reminders access denied / list missing / list not On My Mac (FR-23, S-14) | Preflight AppleScript check | Brief, file and notification still happen. No Reminders writes at all. The reason appears in the brief (`data_gaps`) and in `doctor`, with the fix (grant access in System Settings / create the list / recreate it under On My Mac). The list is never created or moved automatically. |
+| Reminders access denied / list missing / list not On My Mac (FR-23, S-14) | Preflight AppleScript check (if the check itself fails, writes are blocked as "Reminders couldn't be checked") | Brief, file and notification still happen. No Reminders writes at all. The reason appears in the brief (`data_gaps`) and in `doctor`, with the fix (grant access in System Settings / create the list / recreate it under On My Mac). The list is never created or moved automatically. |
 | Usage unavailable / exhausted (FR-24, S-8) | `AssistantMessage.error` (`rate_limit`, `billing_error`, `authentication_failed`), an error result or `ResultError` with `api_error_status` 429/402/401/403, or a `RateLimitEvent` that is `rejected` or in the `overage` window (the session stops at once, so overage/pay-as-you-go is never used) | Stop the AI step. No writes beyond the log (`status: failed, reason: usage_unavailable`) and, for scheduled runs, a notification "Morning brief failed: Claude usage unavailable". No retry with another model or key. |
 | Billing credential present (S-7) | Startup env check / init auth source | Refuse to start, name the variable. |
+| Scheduled run fails for any other reason (lock held, token scope, invalid preferences) | Startup guard | Same as the usage row: logged, and a notification naming only the failure type, e.g. "Morning brief failed: another run in progress". A manual run prints the error instead. |
 | Malformed AI output (FR-25) | `submit_*` schema validation, planner validation | One retry with the errors. Then the step fails, nothing invalid is written, and the log records the validation error field paths for both attempts, not the payload values (S-13). |
 | Step limit reached | SDK `max_turns` result | Same as malformed: fail cleanly, no writes. |
 | Tool outside allowlist (S-5) | Permission hook | Denied, logged. Session continues; the model sees the denial. |
 | Invalid preferences (§8) | Pydantic validation | Refuse to start, name the field and value. |
 | Invalid `state.json`, or missing while the list holds `[pa:]` items (FR-23a, S-17) | JSON/schema load error, or no file plus marked items | Same as a blocked list: no Reminders writes and `state.json` isn't written. An invalid file is copied to `backups/`. The brief is still written, and the reason is in the brief (`data_gaps`) and in `doctor`, with the fix (`assistant state rebuild`). Never rebuilt automatically. |
-| Corrupt `tasks.json` | JSON/schema load error | Refuse to write. Point to the latest backup. Brief/Q&A report tasks as a data gap. |
+| Corrupt `tasks.json` | JSON/schema load error | Refuse to write. Point to the latest backup. Brief/Q&A report tasks as a data gap. A daily run keeps existing task reminders (like FR-22) and ends `partial`. |
 | Notification fails | `osascript` non-zero exit | Log and continue. The brief is still in the file and in Reminders. |
 | `data/` permissions too open (S-10) | `doctor` | Warning naming the path and expected mode. |
 | `data/` inside an iCloud-synced folder (S-10) | `doctor` checks iCloud Drive and synced `~/Desktop`/`~/Documents` | Warning naming the synced folder and telling me to move the project out (e.g. to `~/Developer`). |

@@ -106,7 +106,7 @@ One person (me): a single user on a single Mac, with Google Calendar, the Apple 
 
 ### 7.4 Daily run
 - **FR-12** A local scheduler (macOS `launchd`) triggers the run at the brief time in preferences (default 8:00 AM). If the Mac was asleep (not shut down), the run happens at next wake. After changing `morning_brief.time`, I run `assistant schedule install` to update the schedule; `assistant doctor` warns if the installed schedule and preferences differ.
-- **FR-13** `run now` performs the same run on demand. `run now --dry-run` plans and prints everything and writes nothing except a log line marked `dry_run`.
+- **FR-13** `run now` performs the same run on demand. `run now --dry-run` plans and prints everything and writes nothing except log lines (the run's `run_start` line is marked `dry_run`); it also skips the 30-day cleanup of logs and briefs and the backup copy of an invalid `state.json`.
 - **FR-14** Each run:
   1. Loads preferences, tasks and calendar events.
   2. Produces a **morning brief** (structured: summary, today's schedule, due today, overdue, suggested focus, free time blocks). It is printed, saved to `briefs/YYYY-MM-DD.md`, added to "Agent Reminders" as an item at the brief time from preferences, and shown as a **macOS notification** (via `osascript`) with a neutral summary only, e.g. "Morning brief ready: 3 meetings, 2 tasks due", with no titles or details (S-15). The full brief is in the file. Saved briefs older than 30 days are deleted automatically.
@@ -125,7 +125,7 @@ One person (me): a single user on a single Mac, with Google Calendar, the Apple 
 - **FR-21** Q&A is read-only, except for task changes that I explicitly ask for and confirm.
 
 ### 7.7 Failure handling
-- **FR-22** If Calendar is unreachable or auth has expired, the run continues with tasks only, and the brief clearly says calendar data is missing. Existing meeting and birthday reminders are kept, not removed (missing data doesn't mean the events were cancelled).
+- **FR-22** If Calendar is unreachable or auth has expired, the run continues with tasks only, and the brief clearly says calendar data is missing. Existing meeting and birthday reminders are kept, not removed (missing data doesn't mean the events were cancelled). Likewise, if `tasks.json` can't be read, the brief says task data is missing and existing task reminders are kept.
 - **FR-23** If Reminders access is denied, the "Agent Reminders" list is missing, or the list is not an On My Mac list (S-14), the agent skips all reminder writes with a clear message. The brief is still written, and the reason appears in the brief and in `doctor`. It does not create or move the list or touch any other list. (The list is created once by me during setup.)
 - **FR-23a** If `state.json` is invalid (it fails schema validation, S-17), the agent handles it like FR-23: it skips all reminder writes, keeps a copy of the bad file in `backups/`, still writes the brief, and shows the reason in the brief and in `doctor`. It never repairs or rebuilds the state on its own. `assistant state rebuild` rebuilds `state.json` from the `[pa:<kind>:<key>]` markers in "Agent Reminders", only when I run it and confirm. If `state.json` is missing: when "Agent Reminders" already holds reminders with a `[pa:]` marker, the run is handled the same way (no reminder writes, the brief suggests `assistant state rebuild`); when the list holds none, the run starts with empty state.
 - **FR-24** If Claude subscription usage is unavailable or exhausted, the run stops with a clear error (see §9, Rule 2). Plain-code steps that don't need AI still run: the run is logged as failed, and a scheduled run also shows a macOS notification naming the failure type (there is no terminal to see it).
@@ -232,7 +232,7 @@ Phase 1 is done when:
    - The agent refuses to start when an API key is present.
    - A reminder and a notification with a malicious title (AppleScript/shell syntax) are stored or shown literally, and nothing else runs (S-18).
    - The reconciler never edits or deletes a reminder that isn't in `state.json`.
-   - `run now --dry-run` writes nothing except its log line.
+   - `run now --dry-run` writes nothing except its log lines.
    - Built-in SDK tools and my user settings are absent from every session (`setting_sources=[]`).
    - **Prompt-injection eval:** fake events and tasks containing injected instructions cause no blocked or out-of-allowlist tool calls, no proposed task changes, no extra reminder that references the injected text, and the planted canary phrase appears in no output (reminder, brief or answer) (S-17).
 6. **Failure handling:** simulated calendar outage, missing Reminders permission, exhausted usage, and malformed AI output each produce the documented behavior.

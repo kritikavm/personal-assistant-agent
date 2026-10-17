@@ -90,7 +90,7 @@ Targets come from PRD §10. Reruns are allowed only as described in §4.9.
 | 4.1 | Task capture | B | ≥ 30 | category, deadline, priority | category **and** deadline correct ≥ 90%; priority correct ≥ 80% (§10.3) |
 | 4.2 | Default reminders | A | ≥ 25 scenarios | right item, right time, quiet hours | 100% (§10.2) |
 | 4.3 | Extra reminders | B | 8 | valid, justified, within caps | ≥ 7/8 cases correct (§10.2); 0 invalid extras reach the plan |
-| 4.4 | Morning brief | B | 6 | sections, brief checklist (§5.2) | 0 invented events or tasks in 6/6; full checklist met in ≥ 5/6 (§10.3) |
+| 4.4 | Morning brief | A + B | 6 | sections (A), brief checklist (§5.2) | 0 invented events or tasks in 6/6; full checklist met in ≥ 5/6 (§10.3) |
 | 4.5 | Q&A | B | 12 (3 per type) | correctness, citations, data gaps | 12/12 correct with citations (§10.4) |
 | 4.6 | Failure handling | A + B | 6 | documented behaviour (ARCHITECTURE §8) | 100% on every run, no reruns (§10.6) |
 | 4.7 | Prompt injection | B | 6 | pass rule from SECURITY §7 test 10 | 100% on every run, no reruns (§10.5) |
@@ -131,13 +131,15 @@ Plain code computes these (FR-17), so they are tested as unit tests on the plann
 - **Cases:** 8 daily-run scenarios. Some include obviously important items (an interview, a deadline on a high-priority job task); some include nothing that deserves an extra.
 - **Checked by code (exact):** every extra references a `source_id` from the fixtures, fires in the future and inside the window, has a `reason`, respects `max_per_item`, and doesn't duplicate a default. Invalid extras must be dropped by the planner (FR-18) and counted.
 - **Checked by expectation:** for each scenario, a list of items that *should* get an extra (e.g. the interview gets one the day before) and items that must *not*.
-- **A case is correct when** every exact check passes, every *should* item gets an extra, and no *must not* item gets one.
+- **A case is correct when** every exact check passes (no proposed extra is dropped by the planner), every *should* item gets an extra, and no *must not* item gets one. Cases marked `no_extras` fail if any extra is proposed.
+- **Cases:** `evals/cases/extras/cases.json` (8), using the base fixture at different times plus `empty_day`, `calendar_outage`, `extras_off`, `routine_week` and `cap_one`.
 - **Target:** ≥ 7 of 8 cases correct (§10.2). Default reminders are scored separately in §4.2 (100%).
 
 ### 4.4 Morning brief (FR-14)
 
 - **Cases:** 6 scenarios: a normal day, a busy day, an empty day, a day with overdue tasks, a calendar outage, and a day with a birthday.
-- **Structure (exact):** `submit_daily_plan` validates against the schema. Every item in `schedule`, `due_today` and `overdue` matches the fixtures exactly (right items in the right section, nothing missing, nothing extra).
+- **Structure (exact, Layer A):** code fills `schedule`, `due_today`, `overdue` and free time from the snapshot (decision 2026-10-16), so these lists are checked without AI: the expected lists in `evals/cases/brief/cases.json` must match what code computes (right items in the right section, nothing missing, nothing extra). The AI eval re-checks them each run.
+- **Code pre-checks on the text:** every clock time in `summary` and `focus` must be a time from the fixture (event start/end, deadline, free block, preferences), every task or event ID mentioned must exist, and a brief with missing calendar or task data must list the gap. These catch obvious inventions; my checklist marks decide.
 - **Text (checklist):** `summary` and `focus` are scored with the brief checklist in §5.2.
 - **Targets (§10.3):**
   - **no invented events or tasks** in any of the 6 cases (100%). One invented item fails the set.
@@ -188,7 +190,7 @@ Most failure cases are Layer A because the failure is simulated and the behaviou
 ### 4.8 Repeat runs / no duplicates (FR-15, §10.2)
 
 - **Layer A:** run the planner and reconciler twice on the same snapshot with the fake Reminders client → the second run creates nothing. Then move one event and complete one task → exactly one update and one delete, nothing else.
-- **Layer B:** two full `run` evals in a row on the same fixture (with the fake client) → 0 duplicate reminders. If the AI proposes different extras the second time, the reconciler replaces them; it never stacks them.
+- **Layer B:** two full `run` evals in a row on the same fixture (with the fake client) → 0 duplicate reminders, at most `max_per_item` extras per item, and the list matches `state.json` (`evals/cases/repeat/cases.json`). If the AI proposes different extras the second time, the reconciler replaces them; it never stacks them.
 - **Missing state:** delete the fake `state.json` and run again → no Reminders writes and the brief suggests `state rebuild` (FR-23a). With an empty list instead, the run starts fresh.
 - **Rebuild:** run `state rebuild`, confirm, then run again → state is rebuilt from the `[pa:<kind>:<key>]` markers, and the next run creates no duplicates.
 
@@ -247,6 +249,10 @@ Each full or partial run adds a row to the results table below. Detailed per-cas
 |---|---|---|---|---|---|---|---|---|
 | 2026-10-16 | capture | prompt `ed63698b`, code `a50fb65`+M9 (uncommitted), `claude-sonnet-5-5` | 35 | 34 | category 35/35 (1.00); deadline 35/35 (1.00); priority 34/35 (0.97); assumptions 24/24 | category and deadline ≥ 0.90; priority ≥ 0.80 | ✅ | First run. 35 sessions, 141 turns, 0 retries. One failure (case 32), see §7.2. `evals/results/2026-10-16-1507-capture.json` |
 | 2026-10-16 | capture (case 32 only) | prompt `209897bd`, `claude-sonnet-5-5` | 1 | 1 | priority 1/1 | — | partial | Rerun of case 32 after the priority-rule fix (§7.2). Not a full set run; the full set reruns in M16. |
+| 2026-10-16 | extras | prompt `248d04c5`, code `57d1681`+M10 (uncommitted), `claude-sonnet-5-5` | 8 | 7 | 7/8 correct; 0 extras dropped by the planner | ≥ 7/8; 0 invalid extras reach the plan | ✅ | First run. One failure (case 2), see §7.2. `evals/results/2026-10-16-2138-extras.json` |
+| 2026-10-16 | brief | prompt `248d04c5`, same code | 6 | 5 | lists 6/6; no unknown times or IDs; no invented items 6/6; full checklist 5/6 | 0 invented in 6/6; full checklist ≥ 5/6 | ✅ | Checklist marked by me. Case 4 fails *grounded*: a data gap second-guesses the code's free-time result. Case 5 passes but repeats the code's calendar gap. Both led to a prompt fix, see §7.2. `evals/results/2026-10-16-2139-brief.json` |
+| 2026-10-16 | brief (cases 4 and 5 only) | prompt `3faa9692`, same code | 2 | 2/2 code pre-checks | lists 2/2; no unknown times or IDs | — | partial | Rerun after the prompt fix (§7.2); checklist marks pending. Not a full set run; the full brief set reruns in M16. Case 5 used its one retry. `evals/results/2026-10-16-2239-brief-case4.json`, `evals/results/2026-10-16-2239-brief-case5.json` |
+| 2026-10-16 | repeat | prompt `248d04c5`, same code | 1 (2 runs) | 1 | 0 duplicates, within cap, list matches state | 0 duplicates | ✅ | Second run changed one extra: 1 create, 1 update, 1 delete. `evals/results/2026-10-16-2140-repeat.json` |
 
 ### 7.2 Failures and fixes
 
@@ -255,6 +261,9 @@ Every failure that leads to a change is recorded here, so each fix can be traced
 | Date | Set / case | What failed | Cause | What was changed | Re-run result |
 |---|---|---|---|---|---|
 | 2026-10-16 | capture / 32 | "renew car registration, it expires soon!": priority `medium`, expected `high` | The prompt's high-priority rule lists explicit words ("urgent", "asap", "important", a hard deadline today); the model read "expires soon!" as not matching and said so in its assumptions | Capture prompt: the high rule now also covers near-deadline wording ("expires soon", "overdue", "due soon"). Prompt `ed63698b` → `209897bd` | **Partly checked:** case 32 rerun alone (1 session) passes, priority `high` (`evals/results/2026-10-16-1922-capture-case32.json`). The other 34 cases weren't rerun on the new prompt; the full capture set reruns in M16. |
+| 2026-10-16 | extras / 2 | No extra for t-0101 (high-priority job task due 10-28 17:00, said 10-27) | Claude gave extras to the interview and the rent payment (due 07:30 the next day) and left the expense report to its default reminders (08:00 and 16:00 on the day) | Nothing. **Reasonable miss:** Claude put first the rent payment, which is due before its default reminder would fire. The case stays unchanged. | — |
+| 2026-10-16 | brief / 4 | Failed *grounded*: Claude added a data gap saying the all-day Example Summit "may not fully block your time", questioning the code-filled free-time result | The prompt said code fills the lists but didn't say to treat them as correct | Daily prompt: never question, hedge about or contradict the code-filled lists (schedule, due, overdue, free time). Prompt `248d04c5` → `3faa9692` | **Partly checked:** case 4 rerun alone (1 session): no data gaps, summary matches the free-time result (my mark pending). Full brief set reruns in M16. |
+| 2026-10-16 | brief / 5 | Passed, but Claude's `data_gaps` repeated the calendar gap code had already added | The prompt said code reports an unavailable calendar but didn't forbid repeating it | Same prompt change: never repeat or reword gaps code already added; leave `data_gaps` empty if nothing is new | **Partly checked:** case 5 rerun alone (1 session): only the code's gap line, no duplicate (my mark pending). Full brief set reruns in M16. |
 
 Rules:
 - A case is never edited or deleted to make it pass. If a case itself was wrong, note it here and say why it changed.

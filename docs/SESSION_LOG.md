@@ -53,8 +53,27 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 - The user approved M9. Case 32 fix: the capture prompt's high-priority rule now also covers near-deadline wording ("expires soon", "overdue", "due soon"), prompt `209897bd`. Rerunning only case 32 (1 session) passed (`high`). Marked *partly checked* in EVALS §7.2; the full set reruns in M16. The eval runner now hides the SDK's `CanUseToolShadowedWarning`.
 
+- Committed M9 (`eb6051b`) and the docs (`57d1681`).
+- M10 · Daily run on fakes, built (no new installs; no eval run yet):
+  - The user decided that code, not Claude, fills the brief's schedule, due-today, overdue and free-time lists from the snapshot. `submit_daily_plan` now takes only `brief: {summary, focus[], data_gaps[]}` plus `extra_reminders`; extras may only cite IDs a tool returned this session; a local `fire_at` without an offset is read in the user's time zone. Docs not yet updated (waiting for review).
+  - `flows/daily_run.py`: scheduled-once check → preflight (tasks, calendar window, Reminders access, `state.json` via `check_state`) → one `run` session (max 15 turns) → `build_plan` → `reconcile` → writes in order: Reminders (unless blocked), `state.json` with `last_runs`, `briefs/YYYY-MM-DD.md` (600), notification (counts only), log. Code adds every data gap it knows (calendar missing with the reason and fix, skipped calendars, unreadable tasks, blocked Reminders or state with the fix). Unreadable tasks keep task reminders like a calendar outage keeps meeting and birthday ones.
+  - Status: `partial` when the calendar or tasks were unavailable, Reminders writes were blocked, or a write failed; a missing (404) calendar is a gap but stays `ok`. `run scheduled` skips if today's scheduled run finished `ok` or `partial`; an AI failure writes nothing but the log, so the next trigger runs again.
+  - Dry run: renders the brief and diff, writes only log lines; no pruning of old logs and briefs, no backup copy of an invalid `state.json`.
+  - CLI `run now [--dry-run]`, `run scheduled`. A scheduled run that fails (AI, lock, billing, scope, preferences) shows "Morning brief failed: <type>"; a manual one prints the error.
+  - Shared: `ProposalBox.result/start_attempt/reject`; `atomic_write_text`; `RunLog` skips pruning in a dry run; `check_state(keep_copy=)`.
+  - Evals: sets `extras` (8 cases), `brief` (6), `repeat` (1 case, 2 runs); fixtures `extras_off`, `cap_one`, `routine_week`. 16 sessions in all. Brief scoring: code pre-checks (lists, clock times and IDs in the text must exist in the fixture, gaps stated) plus the §5.2 checklist marks left for the user.
+- Checks: pytest 597 passed, 1 skipped (`test_daily_run.py` 50 incl. safety test 8 and EVALS §4.6 Layer A; `test_evals.py` +15). 12 deliberate mutations each caught. gitleaks clean.
+
+- The user approved the M10 cases and choices 2–8; docs updated (PRD FR-13, FR-22, safety-test wording; ARCHITECTURE tool table, §5, §6.1, §8; SECURITY dry-run rows; EVALS §4.3, §4.4, §4.8; plan M10; CLAUDE.md key decisions).
+- Real preferences: categories changed to the user's new list (with `other` for anything that doesn't fit); one open task migrated `job` → `job_search` with `tasks edit` (backup kept). The capture prompt now says to use `other` when nothing fits and the list has it (capture prompt version changes; full capture rerun in M16).
+- First M10 evals (16 Sonnet sessions): extras 7/8 (target met; case 2 gave no extra to the high-priority expense report), brief 6/6 code pre-checks (checklist marks pending), repeat 0 duplicates. Recorded in EVALS §7.1/§7.2.
+- The user marked the briefs: 6/6 no invented items, 5/6 full checklist (target met). Case 4 failed *grounded* (a data gap second-guessed the code's free-time result); case 5 passed but repeated the code's calendar gap. Extras case 2 recorded as a reasonable miss (rent was due before its default reminder); the case is unchanged. The capture prompt's `other` line was approved.
+- Daily prompt fix: never question or contradict the code-filled lists, never repeat a gap code already added (prompt `248d04c5` → `3faa9692`). Reran brief cases 4 and 5 only (2 sessions): code pre-checks pass, case 4 has no hedging gap, case 5 shows only the code's gap line (case 5 used its one retry). Marked *partly checked* until the full rerun in M16.
+- The user said that text pasted from their planning chat is their instruction (no re-confirming); installs and subscription evals still need approval first.
+- Committed M10 code and docs.
+
 **Next step**
-- M10 · Daily run on fakes (as written in the plan).
+- User reviews M10 (incl. marks for the two rerun briefs). Then M11.
 
 ---
 

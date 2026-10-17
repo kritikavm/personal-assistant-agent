@@ -42,7 +42,8 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - Step limits: `add` 6, `ask` 10, `run` 15.
 - Default task priority is `medium`. Completed tasks move to `completed_tasks.json`, grouped by completion date.
 - The morning brief also shows as a macOS notification. A failed scheduled run shows a failure notification.
-- Dry run writes only a log line marked `dry_run`.
+- Dry run writes only log lines (`run_start` marked `dry_run`): no cleanup, no invalid-state copy.
+- Daily run: code fills the brief's schedule, due-today, overdue and free-time lists and every data gap it knows; Claude writes summary and focus and proposes extras. `partial` = calendar or tasks unavailable, Reminders blocked, or a write failed (a 404 calendar stays `ok`). `run scheduled` runs once a day; a failed scheduled run notifies with the failure type only. Unreadable tasks keep task reminders (like FR-22).
 - If the calendar is unavailable, existing meeting and birthday reminders are kept.
 - Invalid `state.json` (FR-23a): block all Reminders writes like FR-23, copy the bad file to `backups/`, still write the brief, show the reason in the brief and `doctor`. Only `assistant state rebuild`, run and confirmed by the user, rebuilds from `[pa:]` markers. Never rebuild automatically. A missing `state.json` is handled the same way if the list already holds `[pa:]` items; otherwise the run starts fresh.
 - Tech stack: Python 3.12, `uv`, Typer, pydantic v2, `google-api-python-client`, `google-auth-oauthlib`, `keyring`, PyYAML.
@@ -80,7 +81,7 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - **M9 · Task capture and eval runner** built (2026-10-16), verified and approved by the user: `flows/capture.py`, `submit_task` (one retry), CLI `add`, `evals/run_evals.py`, 35 capture cases. First eval 34/35, all targets met. Case 32 fixed in the prompt (partly checked; the full set reruns in M16). pytest 526 + 1 skipped.
 
 **Next step**
-- M10 · Daily run on fakes (as written in the plan).
+- M10 · Daily run on fakes: built and committed; evals met (extras 7/8, brief 6/6 no invented and 5/6 checklist, repeat 0 duplicates). Daily-prompt fix for brief cases 4 and 5 is partly checked (full brief rerun in M16). Waiting for the user's M10 review, then M11.
 
 ## Open issues / verify during build
 

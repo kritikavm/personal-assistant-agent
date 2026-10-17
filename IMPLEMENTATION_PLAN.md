@@ -189,7 +189,7 @@ This plan breaks Phase 1 into small milestones. Each one can be built and tested
   - `last_runs` in state; `run now` and `run scheduled` (once per day)
   - `evals/cases/extras/`, `brief/`, `repeat/`
 - **Must pass:**
-  - safety test 8 (Layer A): `--dry-run` writes only its log line
+  - safety test 8 (Layer A): `--dry-run` writes only its log lines
   - notification text is counts only (Layer A)
   - EVALS §4.3 extras: ≥ 7/8 cases
   - EVALS §4.4 brief: 0 invented items in 6/6, full checklist ≥ 5/6
