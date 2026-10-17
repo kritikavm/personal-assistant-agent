@@ -77,8 +77,10 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 
 - **M8 · Tool server and permission hook** built (2026-10-16), verified and approved by the user: `agent/tools.py` (snapshot, observed IDs, read tools, `find_free_time`, per-flow allowlists), `agent/permissions.py` (PreToolUse hook + `can_use_tool`, deny by default, date checks), `agent/prompts.py`, opt-in live test (`PA_LIVE=1`). pytest 473 + 1 skipped; live session passed. All-day events block free time only if `opaque` (FR-2 `transparency`).
 
+- **M9 · Task capture and eval runner** built (2026-10-16), verified and approved by the user: `flows/capture.py`, `submit_task` (one retry), CLI `add`, `evals/run_evals.py`, 35 capture cases. First eval 34/35, all targets met. Case 32 fixed in the prompt (partly checked; the full set reruns in M16). pytest 526 + 1 skipped.
+
 **Next step**
-- M9 · Task capture (`add`) and eval runner (in progress).
+- M10 · Daily run on fakes (as written in the plan).
 
 ## Open issues / verify during build
 

@@ -109,6 +109,13 @@ Total AI sessions for a full Layer B run: about 64 (§6).
   - priority: exact match; inputs with no priority signal must give `medium`
   - stated assumptions: when a relative date was resolved (e.g. "next Friday"), the proposal's `assumptions` must state the date chosen, so it appears in the confirmation step (FR-8, FR-10)
   - ambiguous inputs (FR-9): pass if the agent either asks one clarifying question, or saves with no deadline and says so. Inventing a deadline fails.
+- **Scoring rules (M9):**
+  - A date-only expectation accepts any time on that day; an expectation with a time must match that instant exactly.
+  - A case may list more than one acceptable deadline (e.g. "this weekend" = Saturday or Sunday; "asap" = none or today).
+  - A clarifying question counts as a correct deadline only on cases marked `clarify_ok`. In the eval nobody answers, so the deadline is dropped, as with Enter in the CLI.
+  - For relative dates, `assumptions` must contain the resolved date as `YYYY-MM-DD`.
+  - Category, deadline and priority are scored separately; a case passes only if all its checks pass.
+  - Cases live in one file, `evals/cases/capture/cases.json` (35 cases), using the base fixture's preferences and tasks.
 - **Runs with `--yes`-equivalent:** the eval reads the `submit_task` proposal; nothing is saved.
 
 ### 4.2 Default reminders (Layer A)
@@ -238,7 +245,8 @@ Each full or partial run adds a row to the results table below. Detailed per-cas
 
 | Date | Set | Prompt/code version | Cases | Passed | Score | Target | Met? | Notes (incl. *rerun* / *superseded*) |
 |---|---|---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — | — | No runs yet (not built) |
+| 2026-10-16 | capture | prompt `ed63698b`, code `a50fb65`+M9 (uncommitted), `claude-sonnet-5-5` | 35 | 34 | category 35/35 (1.00); deadline 35/35 (1.00); priority 34/35 (0.97); assumptions 24/24 | category and deadline ≥ 0.90; priority ≥ 0.80 | ✅ | First run. 35 sessions, 141 turns, 0 retries. One failure (case 32), see §7.2. `evals/results/2026-10-16-1507-capture.json` |
+| 2026-10-16 | capture (case 32 only) | prompt `209897bd`, `claude-sonnet-5-5` | 1 | 1 | priority 1/1 | — | partial | Rerun of case 32 after the priority-rule fix (§7.2). Not a full set run; the full set reruns in M16. |
 
 ### 7.2 Failures and fixes
 
@@ -246,7 +254,7 @@ Every failure that leads to a change is recorded here, so each fix can be traced
 
 | Date | Set / case | What failed | Cause | What was changed | Re-run result |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| 2026-10-16 | capture / 32 | "renew car registration, it expires soon!": priority `medium`, expected `high` | The prompt's high-priority rule lists explicit words ("urgent", "asap", "important", a hard deadline today); the model read "expires soon!" as not matching and said so in its assumptions | Capture prompt: the high rule now also covers near-deadline wording ("expires soon", "overdue", "due soon"). Prompt `ed63698b` → `209897bd` | **Partly checked:** case 32 rerun alone (1 session) passes, priority `high` (`evals/results/2026-10-16-1922-capture-case32.json`). The other 34 cases weren't rerun on the new prompt; the full capture set reruns in M16. |
 
 Rules:
 - A case is never edited or deleted to make it pass. If a case itself was wrong, note it here and say why it changed.

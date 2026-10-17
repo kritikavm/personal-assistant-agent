@@ -35,8 +35,26 @@ Newest entry at the top. No secrets, tokens or personal data.
 - Live check (`PA_LIVE=1 uv run pytest tests/test_live.py -s`, fake fixture data, two short Sonnet sessions): asked to run `echo hello` with Bash, then fetch events from 2026-10-01 to 2026-12-31 and open tasks. Init tools were exactly the four `ask` read tools; Claude called only `get_calendar_events` and `get_tasks`, replied `events=22, tasks=13` (correct for the clamped window), and said it has no Bash tool. No transcript saved.
 - The user verified M8 (70/70) and approved all five choices, with one change: an all-day event blocks the working day only if Google marks it busy (`transparency: opaque`, e.g. out of office); free ones (birthdays, holidays) don't. Added `transparency` to `CalendarEvent` and normalisation (missing = `opaque`, Google's default), PRD FR-2, the ARCHITECTURE tool table and `find_free_time` row, and an EVALS §3.2 row. Base fixture: birthdays and recycling day `transparent`, conference and offsite `opaque`. ARCHITECTURE §7 now says the hook checks every call and `can_use_tool` is the backstop. pytest 473 + 1 skipped.
 
+- Committed M8 (`f563348`) and the docs (`a50fb65`).
+- M9 · Task capture and eval runner, built (no new installs; no eval run yet):
+  - `TaskStore.add` and `next_id` (`t-NNNN`, counting both files); `guard.startup_checks` (billing, preferences, scope without the lock).
+  - `TaskProposal` schema; `submit_task` tool with `ProposalBox` (FR-25: first try plus one retry, then refused; errors back to Claude name fields, not values; logs keep field paths only). Priority defaults to preferences' `default_priority`; category must be in preferences.
+  - The SDK validates tool arguments against the JSON schema before the handler runs, and rejects there would bypass the retry count and the log. So `submit_task`'s schema keeps types and descriptions only; `TaskProposal` checks required fields, allowed values and extra keys.
+  - `runner`: `_Turn` (shared message checks) and `Conversation` (multi-turn via `ClaudeSDKClient`, same checks every turn); new failure kinds `malformed_output`, `no_proposal`.
+  - `prompts.capture_prompt`: capture rules (FR-7–FR-9 incl. this/next weekday) plus a 21-day date table so relative dates aren't computed in the model's head.
+  - `flows/capture.py`: one session; a clarifying question is asked once and answered in a second turn of the same session (fresh retry); Enter or `--yes` drops the deadline and says so.
+  - CLI `add "<text>" [--yes]`: startup checks, session, always prints the parsed task and assumptions, `Save? [Y/n]` unless `--yes`, then takes the run lock only for the write (like `tasks delete`).
+  - `evals/run_evals.py` (`--set capture`, `--case N`, `--dry-run`), `evals/cases/capture/cases.json` (35 fake cases: shopping 7, job 9, plants 5, personal 7, errands 7; EVALS §3.3 tricky dates incl. FR-8 this/next Friday, "by Monday" on a Monday, DST tomorrow 07:00, month boundary; urgent-without-date FR-9 cases), `evals/results/`. Exact scoring in code; usage/auth failures stop the run and mark the rest `not_run`.
+- Checks: pytest 526 passed, 1 skipped (`test_capture.py` 36 incl. EVALS §4.6 malformed output and step limit, `test_evals.py` 17 incl. FR-8 expectations recomputed by code). 8 deliberate mutations each caught. gitleaks clean.
+
+- The user approved the 35 cases as written and M9 choices 1–4 (lock only for the write, loose `submit_task` schema, 21-day date table, scoring rules). Added to ARCHITECTURE §3 tool table and §6.2, and EVALS §4.1.
+- First capture eval (35 Sonnet sessions, prompt `ed63698b`): 34/35 passed. Category 35/35, deadline 35/35, priority 34/35, assumptions stated 24/24; 0 retries, 0 failed sessions. All targets met. Case 32 ("renew car registration, it expires soon!") gave `medium` instead of `high`. Recorded in EVALS §7.1/§7.2; no change made yet. Results in `evals/results/2026-10-16-1507-capture.json`.
+- Extra `add` check (1 session) on a scratch data folder seeded from `examples/`: Claude asked for the expiry date, the answer was used in the second turn, the task was shown, confirmed and saved as `t-0004` with a backup. The log held tool names and the task ID only. The real `data/` was not touched.
+
+- The user approved M9. Case 32 fix: the capture prompt's high-priority rule now also covers near-deadline wording ("expires soon", "overdue", "due soon"), prompt `209897bd`. Rerunning only case 32 (1 session) passed (`high`). Marked *partly checked* in EVALS §7.2; the full set reruns in M16. The eval runner now hides the SDK's `CanUseToolShadowedWarning`.
+
 **Next step**
-- M9 · Task capture (`add`) and eval runner (in progress).
+- M10 · Daily run on fakes (as written in the plan).
 
 ---
 
