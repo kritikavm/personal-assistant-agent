@@ -302,3 +302,73 @@ class BriefText(_Strict):
 class DailyPlanProposal(_Strict):
     brief: BriefText
     extra_reminders: list[ExtraReminderProposal] = Field(default_factory=list, max_length=20)
+
+
+# --- Q&A (FR-19–FR-21, ARCHITECTURE §3 submit_answer, propose_task_change) ------------------------------
+
+
+class AnswerSource(_Strict):
+    type: Literal["event", "task"]
+    id: NonEmptyStr
+    title: Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)] | None = None  # shown from the data, not from here
+
+
+class AnswerProposal(_Strict):
+    answer: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+    sources: list[AnswerSource] = Field(default_factory=list, max_length=40)
+    data_gaps: list[ShortText] = Field(default_factory=list, max_length=10)
+
+
+TaskDeadlineText = Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?([+-]\d{2}:\d{2}|Z)?)?$")]
+
+
+def deadline_from_text(text: str, tz: ZoneInfo) -> date | datetime:
+    """"YYYY-MM-DD" → date; "YYYY-MM-DDTHH:MM" → that local time in `tz`; an explicit offset is kept."""
+    if len(text) == 10:
+        return date.fromisoformat(text)
+    value = datetime.fromisoformat(text)
+    return value if value.tzinfo else value.replace(tzinfo=tz)
+
+
+class TaskUpdate(_Strict):
+    """Fields an `update` may change. An explicit null clears an optional field."""
+
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)] | None = None
+    description: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] | None = None
+    category: NonEmptyStr | None = None
+    priority: Priority | None = None
+    deadline: TaskDeadlineText | None = None
+    status: Literal["todo", "in_progress"] | None = None
+    estimated_minutes: int | None = Field(default=None, gt=0, le=24 * 60)
+
+    @model_validator(mode="after")
+    def _required_fields_not_cleared(self) -> "TaskUpdate":
+        for name in ("title", "category", "priority", "status"):
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise ValueError(f"{name} can't be cleared")
+        if not self.model_fields_set:
+            raise ValueError("nothing to change")
+        return self
+
+    def store_changes(self, tz: ZoneInfo) -> dict:
+        """The changes for TaskStore.edit (None clears)."""
+        out = {}
+        for name in sorted(self.model_fields_set):
+            value = getattr(self, name)
+            if name == "deadline" and value is not None:
+                value = deadline_from_text(value, tz)
+            elif name in ("priority",) and value is not None:
+                value = value.value
+            elif name == "description" and value == "":
+                value = None
+            out[name] = value
+        return out
+
+
+class TaskChangeProposal(_Strict):
+    """One task change Claude queues in `ask`. Nothing is written until the user says yes (FR-21)."""
+
+    action: Literal["create", "update", "complete", "delete"]
+    task_id: NonEmptyStr | None = None
+    changes: dict | None = None  # checked per action by the tool handler
+    reason: ShortText

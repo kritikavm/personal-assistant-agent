@@ -100,7 +100,7 @@ def free_blocks(snap: Snapshot) -> list[dict]:
 
 # --- Data gaps code always reports (FR-20, FR-22, FR-23, FR-23a) -------------------------------------
 
-_CALENDAR_GAPS = {
+CALENDAR_GAPS = {
     "not_connected": "Google Calendar isn't connected yet (run `assistant auth google`).",
     "unverified": "The Google token's scopes couldn't be checked, so the calendar wasn't used.",
 }
@@ -125,7 +125,7 @@ def code_gaps(snap: Snapshot, blocked: str | None) -> list[str]:
     gaps = []
     cal = snap.calendar
     if not cal.available:
-        why = _CALENDAR_GAPS.get(cal.error or "", "The calendar couldn't be reached or its login expired (run `assistant auth google` if this continues).")
+        why = CALENDAR_GAPS.get(cal.error or "", "The calendar couldn't be reached or its login expired (run `assistant auth google` if this continues).")
         gaps.append(f"Calendar data is missing: {why} Meetings and birthdays aren't in this brief; their existing reminders were kept.")
     elif cal.skipped_calendars:
         gaps.append(f"Calendar(s) not found and skipped: {', '.join(cal.skipped_calendars)}.")

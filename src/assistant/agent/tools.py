@@ -23,7 +23,18 @@ from pydantic import ValidationError
 from assistant.agent.runner import AgentFailure, FailureKind
 from assistant.integrations.google_calendar import WINDOW_DAYS, clamp_range, overlaps
 from assistant.planner import default_reminders, local_at
-from assistant.schemas import CalendarEvent, CalendarResult, DailyPlanProposal, Preferences, Task, TaskProposal, TaskStatus
+from assistant.schemas import (
+    AnswerProposal,
+    CalendarEvent,
+    CalendarResult,
+    DailyPlanProposal,
+    Preferences,
+    Task,
+    TaskChangeProposal,
+    TaskProposal,
+    TaskStatus,
+    TaskUpdate,
+)
 
 SERVER = "pa"
 
@@ -33,7 +44,7 @@ def qualified(name: str) -> str:
     return f"mcp__{SERVER}__{name}"
 
 
-# Per-flow allowlists (ARCHITECTURE §3). submit_* / propose_* arrive in M9–M11.
+# Per-flow allowlists (ARCHITECTURE §3).
 FLOW_TOOLS: dict[str, tuple[str, ...]] = {
     "run": ("get_preferences", "get_tasks", "get_calendar_events", "get_default_reminders", "find_free_time", "submit_daily_plan"),
     "add": ("get_preferences", "get_tasks", "submit_task"),
@@ -347,6 +358,142 @@ def submit_daily_plan(snap: Snapshot, seen: Observed, box: ProposalBox, args: di
     return {"accepted": True}
 
 
+def _mentions(text: str, needle: str) -> bool:
+    """Whole-word, case-insensitive: "Gym class" in "after gym class," but "t-01" not in "t-0101"."""
+    return re.search(rf"(?<!\w){re.escape(needle)}(?!\w)", text, re.IGNORECASE) is not None
+
+
+MIN_TITLE_MATCH = 4  # shorter titles ("Gym") match too much ordinary text to count as a mention
+
+
+def uncited(snap: Snapshot, seen: Observed, answer: str, cited: set[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Items shown this session that the answer names (by ID or full title) but doesn't cite (FR-20)."""
+    items: list[tuple[str, str, str]] = []
+    if snap.calendar.available:
+        items += [("event", e.id, e.title) for e in snap.calendar.events if e.id in seen.event_ids]
+    every_task = snap.tasks + [t for group in snap.completed.values() for t in group]
+    items += [("task", t.id, t.title) for t in every_task if t.id in seen.task_ids]
+    out = []
+    for kind, item_id, title in items:
+        if (kind, item_id) in cited or (kind, item_id) in out:
+            continue
+        if _mentions(answer, item_id) or (len(title.strip()) >= MIN_TITLE_MATCH and _mentions(answer, title.strip())):
+            out.append((kind, item_id))
+    return out
+
+
+def submit_answer(snap: Snapshot, seen: Observed, box: ProposalBox, args: dict[str, Any]) -> dict[str, Any]:
+    """The final answer. Every cited ID must have been returned this session, and every item the answer names must be cited."""
+    refused = box.start_attempt("an answer")
+    if refused:
+        return refused
+    try:
+        proposal = AnswerProposal.model_validate(args)
+    except ValidationError as e:
+        return box.reject(*_validation_errors(e))
+    messages, paths = [], []
+    for i, src in enumerate(proposal.sources):
+        if src.id not in (seen.event_ids if src.type == "event" else seen.task_ids):
+            paths.append(f"sources[{i}].id")
+            messages.append(f"sources[{i}].id: not an ID of that type returned by a tool this session")
+    cited = {(s.type, s.id) for s in proposal.sources}
+    for kind, item_id in uncited(snap, seen, proposal.answer, cited):
+        paths.append("sources")
+        messages.append(f"sources: the answer mentions {kind} {item_id} but doesn't cite it")
+    if messages:
+        return box.reject(messages, paths)
+    box.accepted = proposal
+    return {"accepted": True}
+
+
+MAX_CHANGES = 5  # task changes one question may queue
+
+
+def _under_changes(err: ValidationError) -> tuple[list[str], list[str]]:
+    """Validation errors for the `changes` object, with paths under `changes`."""
+    messages, paths = _validation_errors(err)
+    fix = lambda text: "changes" + text[len("proposal") :] if text.startswith("proposal") else f"changes.{text}"  # noqa: E731
+    return [fix(m) for m in messages], [fix(x) for x in paths]
+
+
+@dataclass
+class QueuedChange:
+    """A validated task change waiting for the user's `y` (FR-21). `fields` is ready for the task store."""
+
+    action: str
+    task_id: str | None
+    fields: dict[str, Any]
+    reason: str
+
+
+@dataclass
+class ChangeQueue:
+    """Task changes proposed in `ask`. Invalid proposals get one retry in all (FR-25); they never fail the answer."""
+
+    changes: list[QueuedChange] = field(default_factory=list)
+    invalid: int = 0
+    error_paths: list[list[str]] = field(default_factory=list)
+
+    def reject(self, messages: list[str], paths: list[str]) -> dict[str, Any]:
+        self.invalid += 1
+        self.error_paths.append(paths)
+        return {"queued": False, "errors": messages, "attempts_left": max(0, MAX_ATTEMPTS - self.invalid)}
+
+
+def propose_task_change(snap: Snapshot, seen: Observed, queue: ChangeQueue, args: dict[str, Any]) -> dict[str, Any]:
+    """Check one task change and queue it. Nothing is written here; the CLI asks first."""
+    if queue.invalid >= MAX_ATTEMPTS:
+        return {"queued": False, "errors": ["no more attempts; tell the user the change couldn't be prepared"]}
+    if len(queue.changes) >= MAX_CHANGES:
+        return {"queued": False, "errors": [f"at most {MAX_CHANGES} changes per question"]}
+    try:
+        p = TaskChangeProposal.model_validate(args)
+    except ValidationError as e:
+        return queue.reject(*_validation_errors(e))
+    if p.action == "create":
+        if p.task_id is not None:
+            return queue.reject(["task_id: leave it out for create; code assigns the ID"], ["task_id"])
+        data = dict(p.changes or {})
+        data.setdefault("priority", snap.prefs.default_priority.value)
+        try:
+            fields = TaskProposal.model_validate(data)
+            fields.deadline_value(snap.tz)
+        except ValidationError as e:
+            return queue.reject(*_under_changes(e))
+        except ValueError:
+            return queue.reject(["changes.deadline: not a real date or time"], ["changes.deadline"])
+        if fields.assumptions or fields.clarifying_question:
+            return queue.reject(["changes: only task fields are allowed"], ["changes"])
+        if fields.category not in snap.prefs.categories:
+            return queue.reject([f"changes.category: must be one of {', '.join(snap.prefs.categories)}"], ["changes.category"])
+        queue.changes.append(QueuedChange("create", None, fields.task_fields(snap.tz), p.reason))
+        return {"queued": True}
+
+    open_ids = {t.id for t in snap.tasks}
+    if p.task_id is None:
+        return queue.reject([f"task_id: required for {p.action}"], ["task_id"])
+    if p.task_id not in open_ids or p.task_id not in seen.task_ids:
+        return queue.reject(["task_id: not an open task returned by get_tasks this session"], ["task_id"])
+    if any(c.task_id == p.task_id for c in queue.changes):
+        return queue.reject(["task_id: a change for this task is already queued"], ["task_id"])
+    if p.action in ("complete", "delete"):
+        if p.changes:
+            return queue.reject([f"changes: leave it out for {p.action}"], ["changes"])
+        queue.changes.append(QueuedChange(p.action, p.task_id, {}, p.reason))
+        return {"queued": True}
+    try:
+        update = TaskUpdate.model_validate(p.changes or {})
+        fields = update.store_changes(snap.tz)
+    except ValidationError as e:
+        return queue.reject(*_under_changes(e))
+    except ValueError:
+        return queue.reject(["changes.deadline: not a real date or time"], ["changes.deadline"])
+    if fields.get("category") is not None and fields["category"] not in snap.prefs.categories:
+        return queue.reject([f"changes.category: must be one of {', '.join(snap.prefs.categories)}"], ["changes.category"])
+    queue.changes.append(QueuedChange("update", p.task_id, fields, p.reason))
+    return {"queued": True}
+
+
 # --- MCP wiring ----------------------------------------------------------------------------------------
 
 _DATE = {"type": "string", "pattern": r"^\d{4}-\d{2}-\d{2}$", "description": "Local date, YYYY-MM-DD"}
@@ -426,8 +573,45 @@ DAILY_PLAN_SCHEMA = {
 }
 
 
-def build_tools(flow: str, snap: Snapshot, seen: Observed, box: ProposalBox | None = None) -> list:
-    """This flow's tools: reads, plus the flow's proposal tool when a box is given."""
+# Types and descriptions only, for the same reason as TASK_PROPOSAL_SCHEMA.
+ANSWER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "answer": {"type": "string", "description": "Required. The answer, short and plain"},
+        "sources": {
+            "type": "array",
+            "description": "Every event and task the answer relies on or mentions",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "description": "event or task"},
+                    "id": {"type": "string", "description": "The ID exactly as a tool returned it"},
+                    "title": {"type": "string"},
+                },
+            },
+        },
+        "data_gaps": {"type": "array", "items": {"type": "string"}, "description": "Anything you couldn't check, other than the gaps code adds"},
+    },
+}
+
+TASK_CHANGE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "action": {"type": "string", "description": "Required. create, update, complete or delete"},
+        "task_id": {"type": "string", "description": "The task's ID from get_tasks; leave out for create"},
+        "changes": {
+            "type": "object",
+            "description": "create: title, category, priority, deadline, description, estimated_minutes. "
+            "update: only the fields to change (null clears description, deadline or estimated_minutes; status todo or in_progress). "
+            "Leave out for complete and delete. Deadlines: YYYY-MM-DD, or YYYY-MM-DDTHH:MM local time",
+        },
+        "reason": {"type": "string", "description": "Required. One line: what the user asked for"},
+    },
+}
+
+
+def build_tools(flow: str, snap: Snapshot, seen: Observed, box: ProposalBox | None = None, queue: ChangeQueue | None = None) -> list:
+    """This flow's tools: reads, plus the flow's proposal tools when a box (and for `ask`, a change queue) is given."""
     task_props: dict[str, Any] = {"status": {"type": "array", "items": {"enum": ["todo", "in_progress", "done"]}}}
     if flow != "run":  # FR-11a: the daily run never sees completed tasks
         task_props |= {"include_completed": {"type": "boolean"}, "completed_since": _DATE}
@@ -470,12 +654,27 @@ def build_tools(flow: str, snap: Snapshot, seen: Observed, box: ProposalBox | No
             "If it's rejected, fix the listed fields and submit once more.",
             DAILY_PLAN_SCHEMA,
         )(_wrap(lambda a: submit_daily_plan(snap, seen, box, a)))
+    if box is not None and flow == "ask":
+        available["submit_answer"] = tool(
+            "submit_answer",
+            "Submit the final answer with its sources. Code checks the cited IDs before it's shown. "
+            "If it's rejected, fix the listed fields and submit once more.",
+            ANSWER_SCHEMA,
+        )(_wrap(lambda a: submit_answer(snap, seen, box, a)))
+    if queue is not None and flow == "ask":
+        available["propose_task_change"] = tool(
+            "propose_task_change",
+            "Queue one task change the user explicitly asked for. Nothing changes until the user confirms it.",
+            TASK_CHANGE_SCHEMA,
+        )(_wrap(lambda a: propose_task_change(snap, seen, queue, a)))
     return [available[name] for name in FLOW_TOOLS[flow] if name in available]
 
 
-def build_server(flow: str, snap: Snapshot, seen: Observed, box: ProposalBox | None = None) -> tuple[dict[str, Any], tuple[str, ...]]:
+def build_server(
+    flow: str, snap: Snapshot, seen: Observed, box: ProposalBox | None = None, queue: ChangeQueue | None = None
+) -> tuple[dict[str, Any], tuple[str, ...]]:
     """The `pa` server for one session, and the qualified names it exposes."""
-    tools = build_tools(flow, snap, seen, box)
+    tools = build_tools(flow, snap, seen, box, queue)
     return {SERVER: create_sdk_mcp_server(SERVER, tools=tools)}, tuple(qualified(t.name) for t in tools)
 
 

@@ -311,3 +311,151 @@ def test_extras_target_needs_every_case_run(monkeypatch):
     assert R.summarize_daily("extras", results)["met"] is False
     full = [{"status": "run", "passed": i != 0, "proposed": []} for i in range(8)]
     assert R.summarize_daily("extras", full)["met"] is True
+
+
+# --- M11: Q&A set ----------------------------------------------------------------------------------------
+
+from assistant.flows import ask as A  # noqa: E402
+from tests.fakes.session import Asker  # noqa: E402
+
+
+def test_qa_cases_shape_and_session_count(capsys):
+    _, cases = R.load_cases("qa")
+    assert len(cases) == 12
+    assert {t: sum(c["type"] == t for c in cases) for t in ("day", "focus", "overdue", "fits")} == {"day": 3, "focus": 3, "overdue": 3, "fits": 3}
+    for t in ("day", "focus", "overdue", "fits"):
+        assert sum(c["type"] == t and c.get("calendar_missing", False) for c in cases) == 1
+        assert all(c["fixture"] == "calendar_outage" for c in cases if c.get("calendar_missing"))
+    assert R.main(["--set", "qa", "--dry-run"]) == 0
+    assert "→ 12 Claude session(s)" in capsys.readouterr().out
+
+
+def test_qa_expectations_match_code():
+    """The reviewed answers in the case file are what code computes from the fixture."""
+    _, cases = R.load_cases("qa")
+    for c in cases:
+        _, snap = R.qa_snapshot(c)
+        exp = c["expected"]
+        if c["type"] == "day":
+            assert exp["events"] == [e.id for e in D.todays_events(snap)], c["id"]
+        elif c["type"] == "overdue":
+            assert exp["overdue"] == [t.id for t in D.task_lists(snap)[1]], c["id"]
+        elif c["type"] == "focus":
+            due, late = D.task_lists(snap)
+            assert set(exp["must_cite"]) == {t.id for t in due + late if t.priority.value == "high"}, c["id"]
+        else:
+            free = R.free_time(snap, R.Observed(), snap.today.isoformat())
+            longest = max((b["minutes"] for b in free["free"]), default=0)
+            total = sum(b["minutes"] for b in free["free"])
+            want = "unknown" if not free["calendar_available"] else ("yes" if longest >= exp["minutes"] else "no")
+            assert exp["verdict"] == want, c["id"]
+            assert (longest >= exp["minutes"]) == (total >= exp["minutes"]), "pick cases where one block and total time agree"
+
+
+def qa_run(monkeypatch, *calls_per_case, cases):
+    queue = list(calls_per_case)
+    real = A.ask
+
+    async def fake(q, snap, **kw):
+        return await real(q, snap, **{**kw, "session": Asker(*queue.pop(0))})
+
+    monkeypatch.setattr(R, "ask", fake)
+    return asyncio.run(R.run_qa(cases))
+
+
+def qa_case(case_id):
+    _, cases = R.load_cases("qa", case_id)
+    return cases
+
+
+def test_qa_day_case_passes_with_exact_events(monkeypatch):
+    reads = [("get_calendar_events", {"start_date": "2026-10-28", "end_date": "2026-10-28"})]
+    sources = [{"type": "event", "id": i} for i in ["evt001", "evt002", "evt003", "evt004"]]
+    answer = {"answer": "Team sync at 09:00, design review 10:00, lunch 12:00, dentist 15:30.", "sources": sources}
+    [r] = qa_run(monkeypatch, [*reads, ("submit_answer", answer)], cases=qa_case(1))
+    assert r["passed"] and r["checks"]["events_exact"] and r["checks"]["changes"]
+
+
+def test_qa_day_case_fails_on_a_missing_event_or_unknown_time(monkeypatch):
+    reads = [("get_calendar_events", {"start_date": "2026-10-28", "end_date": "2026-10-28"})]
+    answer = {"answer": "Team sync at 09:00 and something at 19:45.", "sources": [{"type": "event", "id": "evt001"}]}
+    [r] = qa_run(monkeypatch, [*reads, ("submit_answer", answer)], cases=qa_case(1))
+    assert not r["passed"] and r["checks"]["events_exact"] is False and r["checks"]["unknown_times"] == ["19:45"]
+
+
+def test_qa_change_case_needs_exactly_the_proposal(monkeypatch):
+    reads = [("get_tasks", {})]
+    srcs = [{"type": "task", "id": "t-0104"}]
+    good = [*reads, ("propose_task_change", {"action": "complete", "task_id": "t-0103", "reason": "asked"}), ("submit_answer", {"answer": "Repot the monstera is overdue.", "sources": srcs})]
+    none = [*reads, ("submit_answer", {"answer": "Repot the monstera is overdue.", "sources": srcs})]
+    first, second = qa_run(monkeypatch, good, none, cases=qa_case(7) * 2)
+    assert first["passed"] and first["changes"][0]["task_id"] == "t-0103"
+    assert second["checks"]["changes"] is False
+
+
+def test_qa_any_change_fails_a_plain_question(monkeypatch):
+    calls = [("get_tasks", {}), ("propose_task_change", {"action": "delete", "task_id": "t-0103", "reason": "x"}), ("submit_answer", {"answer": "Two.", "sources": [{"type": "task", "id": "t-0104"}, {"type": "task", "id": "t-0103"}]})]
+    [r] = qa_run(monkeypatch, calls, cases=qa_case(9))
+    assert r["checks"]["changes"] is False and not r["passed"]
+
+
+@pytest.mark.parametrize(
+    "text, want",
+    [("Yes, 13:00-15:30 is free.", "yes"), ("No. You're booked all day.", "no"), ("I can't tell: the calendar is unavailable.", "unknown"), ("Probably yes.", None), ("Nope", None)],
+)
+def test_verdict(text, want):
+    assert R.verdict(text) == want
+
+
+def test_qa_outage_case_needs_the_gap_said(monkeypatch):
+    calls = [("find_free_time", {"date": "2026-10-28"})]
+    said = [*calls, ("submit_answer", {"answer": "I can't tell: your calendar is unavailable, so free time is unknown.", "sources": []})]
+    silent = [*calls, ("submit_answer", {"answer": "I can't tell.", "sources": []})]
+    first, second = qa_run(monkeypatch, said, silent, cases=qa_case(12) * 2)
+    assert first["passed"] and first["checks"]["calendar_gap_said"]
+    assert second["checks"]["calendar_gap_said"] is False and not second["passed"]
+    assert first["data_gaps"][0].startswith("Calendar data is missing")
+
+
+def test_qa_usage_failure_stops_the_rest(monkeypatch):
+    async def fake(q, snap, **kw):
+        raise AgentFailure(FailureKind.usage_unavailable, "rate_limit_rejected:five_hour")
+
+    monkeypatch.setattr(R, "ask", fake)
+    results = asyncio.run(R.run_qa(qa_case(1) + qa_case(2)))
+    assert [r["status"] for r in results] == ["not_run", "not_run"]
+    assert R.summarize_qa(results)["met"] is None
+
+
+def test_qa_prompt_version_changes_with_the_prompt(monkeypatch):
+    before = R.prompt_version("qa")
+    monkeypatch.setattr(R, "ASK", R.ASK + "x")
+    assert R.prompt_version("qa") != before
+
+
+def test_called_overdue_reads_headings_bullets_and_negations():
+    _, snap = R.qa_snapshot(qa_case(7)[0])
+    text = (
+        "Overdue right now:\n- Renew library books (deadline 2026-10-27). Once you confirm, it won't be overdue.\n- Repot the monstera.\n\n"
+        "Due today, not yet overdue: Submit expense report (17:00) and Buy birthday card for Alex."
+    )
+    assert R.called_overdue(text, snap) == {"t-0103", "t-0104"}
+    assert R.called_overdue("Two tasks are overdue:\n- Repot the monstera\n\nDue today:\n- Submit expense report", snap) == {"t-0104"}
+    assert R.called_overdue("Submit expense report is overdue.", snap) == {"t-0101"}
+    assert R.called_overdue("1. Send rent payment (t-0111). It's overdue.", snap) == {"t-0111"}
+
+
+def test_qa_overdue_case_allows_named_due_today_tasks_but_not_wrong_overdue_claims(monkeypatch):
+    reads = [("get_tasks", {})]
+    srcs = [{"type": "task", "id": i} for i in ("t-0104", "t-0103", "t-0101", "t-0102")]
+    ok = "Two tasks are overdue:\n- Repot the monstera\n- Renew library books\n\nDue today but not yet overdue: Submit expense report and Buy birthday card for Alex."
+    wrong = "Overdue:\n- Repot the monstera\n- Renew library books\n- Submit expense report\n- Buy birthday card for Alex"
+    first, second = qa_run(monkeypatch, [*reads, ("submit_answer", {"answer": ok, "sources": srcs})], [*reads, ("submit_answer", {"answer": wrong, "sources": srcs})], cases=qa_case(9) * 2)
+    assert first["passed"] and first["checks"]["calendar_gap_said"] is None  # an overdue list doesn't depend on the calendar
+    assert second["checks"]["none_wrongly_overdue"] is False and second["checks"]["wrongly_overdue"] == ["t-0101", "t-0102"]
+
+
+def test_qa_overdue_case_needs_every_overdue_task_cited(monkeypatch):
+    calls = [("get_tasks", {}), ("submit_answer", {"answer": "Repot the monstera is overdue.", "sources": [{"type": "task", "id": "t-0104"}]})]
+    [r] = qa_run(monkeypatch, calls, cases=qa_case(9))
+    assert r["checks"]["overdue_cited"] is False

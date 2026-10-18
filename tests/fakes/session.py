@@ -1,4 +1,4 @@
-"""A scripted Claude for `run` sessions, and an in-process tool server it can call (Layer A, no AI)."""
+"""Scripted Claudes for `run` and `ask` sessions, and an in-process tool server they can call (Layer A, no AI)."""
 
 import json
 import re
@@ -15,6 +15,39 @@ from assistant.agent.runner import SessionResult
 def recording_server(monkeypatch):
     """Replace the in-process MCP server with one the fake session can call directly."""
     monkeypatch.setattr(T, "create_sdk_mcp_server", lambda name, tools: {"type": "sdk", "name": name, "tools": {t.name: t for t in tools}})
+
+
+async def call_tool(options, name, args, replies: list | None = None):
+    """One tool call the way the SDK makes it: permission hook, then the JSON schema, then the handler."""
+    tools = options.mcp_servers["pa"]["tools"]
+    hook = options.hooks["PreToolUse"][0].hooks[0]
+    decision = (await hook({"tool_name": T.qualified(name), "tool_input": args}, "id", {}))["hookSpecificOutput"]
+    assert decision["permissionDecision"] == "allow", name
+    args = decision.get("updatedInput", args)
+    try:
+        jsonschema.validate(args, tools[name].input_schema)
+    except jsonschema.ValidationError:
+        return None
+    out = json.loads((await tools[name].handler(args))["content"][0]["text"])
+    if replies is not None:
+        replies.append(out)
+    return out
+
+
+class Asker:
+    """Plays Claude in an `ask` session: scripted (tool, args) calls in order, e.g. reads, changes, then answers."""
+
+    def __init__(self, *calls, fail: Exception | None = None):
+        self.calls, self.fail = calls, fail
+        self.replies: list[dict] = []
+
+    async def __call__(self, prompt, options):
+        self.prompt, self.options = prompt, options
+        if self.fail:
+            raise self.fail
+        for name, args in self.calls:
+            await call_tool(options, name, args, self.replies)
+        return SessionResult(text="Done.", init={}, num_turns=len(self.calls) + 1)
 
 
 class Claude:

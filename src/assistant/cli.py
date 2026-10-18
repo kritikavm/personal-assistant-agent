@@ -11,7 +11,8 @@ import typer
 
 from assistant import __version__, config
 from assistant.agent import runner
-from assistant.agent.tools import UNAVAILABLE, Snapshot
+from assistant.agent.tools import UNAVAILABLE, QueuedChange, Snapshot, calendar_window
+from assistant.flows.ask import Source, apply_change, ask, when_text
 from assistant.flows.capture import capture
 from assistant.flows.daily_run import NOTIFY_TITLE, RunResult, daily_run, failure_text
 from assistant.guard import (
@@ -32,7 +33,7 @@ from assistant.integrations.notify import MacNotifier, Notifier
 from assistant.integrations.reminders import AGENT_LIST, AppleRemindersClient, ReminderAccess, RemindersClient
 from assistant.logging_setup import BRIEFS_DIR, RunLog
 from assistant.state import STATE_FILE, plan_rebuild, write_rebuilt
-from assistant.schemas import Preferences, Priority, Task, TaskStatus
+from assistant.schemas import CalendarResult, Preferences, Priority, Task, TaskStatus
 from assistant.tasks_store import TaskStore, TaskStoreError, parse_deadline
 
 app = typer.Typer(
@@ -451,6 +452,119 @@ def add(
             raise _fail(e.problems) from None
         log.event("task_created", task_id=task.id)
     typer.echo(f"Saved as {task.id}.")
+
+
+# --- ask (FR-19–FR-21, ARCHITECTURE §6.3) -------------------------------------------------------------
+
+
+def _source_line(src: Source, tz) -> str:
+    item = src.item
+    if src.type == "event":
+        if item.all_day:
+            when = f"{item.start.isoformat()} all day"
+        else:
+            when = f"{item.start.astimezone(tz):%Y-%m-%d %H:%M}–{item.end.astimezone(tz):%H:%M}"
+        return f"event  {when}  {' '.join(item.title.split())}"
+    due = f", due {when_text(item.deadline, tz)}" if item.deadline else ""
+    done = ", done" if item.status is TaskStatus.done else ""
+    return f"task   {item.id}  {' '.join(item.title.split())} ({item.priority.value}{due}{done})"
+
+
+_FIELD_NAMES = {"estimated_minutes": "estimate (min)"}
+
+
+def _change_text(change: QueuedChange, open_tasks: list[Task], tz) -> str:
+    def show(value) -> str:
+        if value is None:
+            return "(none)"
+        return when_text(value, tz) if isinstance(value, (date, datetime)) else str(value)
+
+    if change.action == "create":
+        f = change.fields
+        extra = ", ".join(f"{_FIELD_NAMES.get(k, k)} {show(v)}" for k, v in f.items() if k not in ("title",) and v is not None)
+        return f"Add task: {' '.join(f['title'].split())} ({extra})"
+    task = next((t for t in open_tasks if t.id == change.task_id), None)
+    name = f"{change.task_id} {' '.join(task.title.split())}" if task else change.task_id
+    if change.action == "complete":
+        return f"Mark done: {name}"
+    if change.action == "delete":
+        return f"Delete: {name}"
+    parts = []
+    for k, v in change.fields.items():
+        old = getattr(task, k, None) if task else None
+        old = old.value if hasattr(old, "value") else old
+        parts.append(f"{_FIELD_NAMES.get(k, k)} {show(old)} → {show(v)}")
+    return f"Change {name}: " + "; ".join(parts)
+
+
+@app.command("ask")
+def ask_command(question: str = typer.Argument(..., help='Your question, e.g. "What is overdue?"')) -> None:
+    """Ask about your day, tasks or free time. Any task change it proposes is applied only after you say y."""
+    data_dir = config.default_data_dir()
+    try:
+        start = startup_checks(data_dir, tokens=google_tokens())
+    except (BillingCredentialError, ScopeError) as e:
+        raise _fail([str(e)]) from None
+    except config.PreferencesError as e:
+        raise _fail([f"preferences: {p}" for p in e.problems]) from None
+    prefs = start.prefs
+    now = datetime.now(prefs.tz)
+    store = TaskStore(data_dir, prefs.tz, now=lambda: datetime.now(prefs.tz))
+    with RunLog(data_dir, "ask", prefs.tz) as log:
+        tasks_error = None
+        open_tasks, completed = [], {}
+        try:
+            open_tasks, completed = store.load_open(), store.load_completed()
+        except TaskStoreError as e:
+            tasks_error = "tasks_unavailable"
+            log.error(e)
+        if start.calendar_available:
+            cal = calendar_window(calendar_client(prefs, now.date()), now.date())
+        else:
+            cal = CalendarResult(available=False, error=start.calendar.value)
+        log.event("calendar_loaded", ok=cal.available, count=len(cal.events), **({"error_code": cal.error} if cal.error else {}))
+        snap = Snapshot(prefs, now, cal, open_tasks, completed, tasks_error)
+        try:
+            outcome = asyncio.run(ask(question, snap, cwd=data_dir, log=log))
+        except runner.AgentFailure as e:
+            log.status = "failed"
+            log.event("answer_failed", status=e.kind.value)
+            raise _fail([f"couldn't answer: {e.kind.value}. Nothing was changed."]) from None
+        log.event("answer_given", count=len(outcome.sources), attempt=len(outcome.error_paths) + 1)
+
+        typer.echo(outcome.answer.answer)
+        if outcome.sources:
+            typer.echo("")
+            typer.echo("Sources:")
+            for src in outcome.sources:
+                typer.echo(f"  {_source_line(src, prefs.tz)}")
+        if outcome.data_gaps:
+            typer.echo("")
+            typer.echo("Data gaps:")
+            for gap in outcome.data_gaps:
+                typer.echo(f"  - {' '.join(gap.split())}")
+
+        for change in outcome.changes:
+            log.event("change_proposed", action=change.action, **({"task_id": change.task_id} if change.task_id else {}))
+            typer.echo("")
+            typer.echo(f"Proposed: {_change_text(change, open_tasks, prefs.tz)}")
+            if not typer.confirm("Apply?", default=False):
+                log.event("change_declined", action=change.action)
+                typer.echo("Not applied.")
+                continue
+            try:
+                with run_lock(data_dir):  # only for the write, like `add`
+                    task = apply_change(store, change, prefs.categories)
+            except RunLockedError as e:
+                log.error(e)
+                typer.echo(f"Not applied: {e}", err=True)
+                continue
+            except TaskStoreError as e:
+                log.error(e)
+                typer.echo("Not applied: " + "; ".join(e.problems), err=True)
+                continue
+            log.event("change_applied", action=change.action, task_id=task.id)
+            typer.echo(f"Applied: {_describe(task, prefs.tz)}")
 
 
 # --- run (FR-12–FR-18, ARCHITECTURE §6.1) -------------------------------------------------------------

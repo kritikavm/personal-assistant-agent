@@ -1,6 +1,6 @@
 """Layer B eval runner (EVALS §6). Developer script, not an `assistant` command.
 
-    uv run python evals/run_evals.py --set capture            # whole set (capture, extras, brief, repeat)
+    uv run python evals/run_evals.py --set capture            # whole set (capture, extras, brief, repeat, qa)
     uv run python evals/run_evals.py --set capture --case 12  # one case
     uv run python evals/run_evals.py --set capture --dry-run  # list cases and session count, no AI
 
@@ -27,9 +27,22 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from assistant.agent import runner  # noqa: E402
-from assistant.agent.prompts import CAPTURE, DAILY  # noqa: E402
+from assistant.agent.prompts import ASK, CAPTURE, DAILY  # noqa: E402
 from assistant.agent.runner import AgentFailure, FailureKind  # noqa: E402
-from assistant.agent.tools import DAILY_PLAN_SCHEMA, TASK_PROPOSAL_SCHEMA, UNAVAILABLE, Snapshot  # noqa: E402
+from assistant.agent.tools import (  # noqa: E402
+    ANSWER_SCHEMA,
+    DAILY_PLAN_SCHEMA,
+    TASK_CHANGE_SCHEMA,
+    TASK_PROPOSAL_SCHEMA,
+    UNAVAILABLE,
+    MIN_TITLE_MATCH,
+    Observed,
+    Snapshot,
+    _mentions,
+    calendar_window,
+    free_time,
+)
+from assistant.flows.ask import AskOutcome, ask  # noqa: E402
 from assistant.flows.capture import capture  # noqa: E402
 from assistant.flows.daily_run import RunResult, daily_run  # noqa: E402
 from assistant.state import load_state, parse_marker  # noqa: E402
@@ -45,7 +58,7 @@ warnings.filterwarnings("ignore", category=CanUseToolShadowedWarning)
 
 CASES = ROOT / "evals" / "cases"
 RESULTS = ROOT / "evals" / "results"
-SETS = ("capture", "extras", "brief", "repeat")  # qa, failure, injection arrive with M11–M12
+SETS = ("capture", "extras", "brief", "repeat", "qa")  # failure, injection arrive with M12
 STOP_KINDS = {FailureKind.usage_unavailable, FailureKind.auth_unavailable, FailureKind.api_key_auth, FailureKind.cli_missing}
 TARGETS = {"category": 0.90, "deadline": 0.90, "priority": 0.80}
 
@@ -111,6 +124,8 @@ def prompt_version(set_name: str = "capture") -> str:
     """Changes whenever the set's prompt or proposal schema changes (EVALS §7.1 column)."""
     if set_name == "capture":
         text = CAPTURE + json.dumps(TASK_PROPOSAL_SCHEMA, sort_keys=True)
+    elif set_name == "qa":
+        text = ASK + json.dumps(ANSWER_SCHEMA, sort_keys=True) + json.dumps(TASK_CHANGE_SCHEMA, sort_keys=True)
     else:
         text = DAILY + json.dumps(DAILY_PLAN_SCHEMA, sort_keys=True)
     return hashlib.sha256(text.encode()).hexdigest()[:8]
@@ -398,6 +413,168 @@ def summarize_daily(set_name: str, results: list[dict[str, Any]]) -> dict[str, A
     return summary
 
 
+# --- Q&A set (EVALS §4.5) ---------------------------------------------------------------------------------
+
+
+def qa_snapshot(case: dict[str, Any]) -> tuple[Scenario, Snapshot]:
+    """The case's fixture as one `ask` snapshot: calendar window, open and completed tasks."""
+    sc = scenario(case)
+    completed = {d: [Task.model_validate(t) for t in ts] for d, ts in sc.completed.items()}
+    snap = Snapshot(sc.preferences, sc.now, calendar_window(sc.calendar_client(), sc.today), [Task.model_validate(t) for t in sc.tasks], completed)
+    return sc, snap
+
+
+def qa_known_times(snap: Snapshot) -> set[str]:
+    """Every clock time the tools could have shown: events, deadlines, free blocks on each day, preferences, now."""
+    tz, times = snap.tz, set()
+    hm = lambda moment: moment.astimezone(tz).strftime("%H:%M")  # noqa: E731
+    if snap.calendar.available:
+        for e in snap.calendar.events:
+            times |= {hm(t) for t in (e.start, e.end) if isinstance(t, datetime)}
+        for i in range(8):
+            day = date.fromordinal(snap.today.toordinal() + i)
+            for b in free_time(snap, Observed(), day.isoformat())["free"]:
+                times |= {hm(datetime.fromisoformat(b[k])) for k in ("start", "end")}
+    for t in snap.tasks + [t for ts in snap.completed.values() for t in ts]:
+        if isinstance(t.deadline, datetime):
+            times.add(hm(t.deadline))
+    p = snap.prefs
+    times |= {c.strftime("%H:%M") for c in (p.morning_brief.time, p.working_hours.start, p.working_hours.end, p.quiet_hours.start, p.quiet_hours.end)}
+    times.add(hm(snap.now))
+    return times
+
+
+_VERDICTS = (("yes", re.compile(r"^yes\b", re.I)), ("no", re.compile(r"^no\b", re.I)), ("unknown", re.compile(r"^i (?:can't|cannot|can’t) tell\b", re.I)))
+_CALENDAR_GAP = re.compile(r"calendar\b[^.]*\b(?:unavailable|missing|not available|isn't connected|not connected|couldn't|can't|cannot|unknown)|"
+                           r"\b(?:unavailable|missing|can't see|cannot see|no access to)\b[^.]*\bcalendar", re.I)
+
+
+_BULLET = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s+")
+_OVERDUE = re.compile(r"\boverdue\b", re.I)
+_NOT_OVERDUE = re.compile(r"(?:\bnot\b|n't\b|\bno longer\b)\W+(?:\w+\W+){0,2}overdue\b", re.I)
+
+
+def _claims_overdue(text: str) -> bool:
+    return bool(_OVERDUE.search(text)) and not _NOT_OVERDUE.search(text)
+
+
+def called_overdue(answer: str, snap: Snapshot) -> set[str]:
+    """IDs of tasks the answer calls overdue: named in a sentence or list item that says "overdue" (not "not yet
+    overdue"), or in a list under a heading that does ("Overdue:"). A pre-check; my marks decide."""
+    tasks = snap.tasks + [t for ts in snap.completed.values() for t in ts]
+    named = lambda text: {t.id for t in tasks if _mentions(text, t.id) or (len(t.title) >= MIN_TITLE_MATCH and _mentions(text, t.title))}  # noqa: E731
+    out: set[str] = set()
+    heading = False
+    for line in answer.splitlines():
+        if not line.strip():
+            continue
+        if _BULLET.match(line):
+            if heading or _claims_overdue(line):
+                out |= named(line)
+            continue
+        heading = line.rstrip().endswith(":") and _claims_overdue(line)
+        for sentence in re.split(r"(?<=[.!?])\s+", line):
+            if _claims_overdue(sentence):
+                out |= named(sentence)
+    return out
+
+
+def verdict(answer: str) -> str | None:
+    text = answer.strip()
+    return next((name for name, pattern in _VERDICTS if pattern.match(text)), None)
+
+
+def score_qa(case: dict[str, Any], snap: Snapshot, outcome: AskOutcome) -> dict[str, Any]:
+    """EVALS §4.5 exact checks, plus code pre-checks on the text (times, calendar gap). My checklist marks decide the text."""
+    exp = case["expected"]
+    events = {s.id for s in outcome.sources if s.type == "event"}
+    tasks = {s.id for s in outcome.sources if s.type == "task"}
+    checks: dict[str, Any] = {}
+    if case["type"] == "day":
+        checks["events_exact"] = events == set(exp["events"])
+    elif case["type"] == "focus":
+        checks["must_cite"] = set(exp["must_cite"]) <= tasks
+    elif case["type"] == "overdue":
+        want = set(exp["overdue"])
+        checks["overdue_cited"] = want - set(exp.get("may_omit", [])) <= tasks
+        wrong = sorted(called_overdue(outcome.answer.answer, snap) - want)
+        checks["none_wrongly_overdue"] = not wrong
+    else:
+        checks["verdict"] = verdict(outcome.answer.answer) == exp["verdict"]
+    expected_change = exp.get("change")
+    got = [{"action": c.action, "task_id": c.task_id} for c in outcome.changes]
+    checks["changes"] = got == ([expected_change] if expected_change else [])
+    unknown_times = sorted(mentioned_times(outcome.answer.answer) - qa_known_times(snap))
+    checks["times_known"] = not unknown_times
+    # Only questions that depend on the calendar must say it's missing (an overdue list doesn't).
+    needs_calendar = case.get("calendar_missing") and case["type"] in ("day", "focus", "fits")
+    checks["calendar_gap_said"] = bool(_CALENDAR_GAP.search(outcome.answer.answer)) if needs_calendar else None
+    checks["unknown_times"] = unknown_times
+    if case["type"] == "overdue":
+        checks["wrongly_overdue"] = wrong
+    return checks
+
+
+async def run_qa(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    stop: str | None = None
+    with tempfile.TemporaryDirectory(prefix="pa-eval-") as cwd:
+        for case in cases:
+            base = {"id": case["id"], "type": case["type"], "fixture": case["fixture"], "now": case["now"], "question": case["question"], "expected": case["expected"]}
+            if stop:
+                results.append({**base, "status": "not_run", "reason": stop})
+                continue
+            _, snap = qa_snapshot(case)
+            try:
+                outcome = await ask(case["question"], snap, cwd=Path(cwd))
+            except AgentFailure as e:
+                print(f"  case {case['id']:>2}: FAILED ({e.kind.value})")
+                if e.kind in STOP_KINDS:
+                    stop = e.kind.value
+                    results.append({**base, "status": "not_run", "reason": stop})
+                else:
+                    results.append({**base, "status": "failed", "failure": e.kind.value, "checks": {}, "passed": False})
+                continue
+            checks = score_qa(case, snap, outcome)
+            ok = all(v is not False for k, v in checks.items() if isinstance(v, bool) or v is None)
+            results.append(
+                {
+                    **base,
+                    "status": "run",
+                    "answer": outcome.answer.answer,
+                    "sources": [{"type": s.type, "id": s.id} for s in outcome.sources],
+                    "data_gaps": outcome.data_gaps,
+                    "changes": [{"action": c.action, "task_id": c.task_id, "fields": {k: str(v) for k, v in c.fields.items()}, "reason": c.reason} for c in outcome.changes],
+                    "retries": len(outcome.error_paths),
+                    "change_retries": len(outcome.change_error_paths),
+                    "turns": outcome.session.num_turns,
+                    "duration_ms": outcome.session.duration_ms,
+                    "checks": checks,
+                    "passed": ok,
+                    "checklist": {"grounded": None, "cites_sources": None, "no_invented": None, "data_gaps": None, "answers_question": None},  # my marks (§5.2)
+                }
+            )
+            marks = " ".join(f"{k}={'ok' if v else ('-' if v is None else 'FAIL')}" for k, v in checks.items() if isinstance(v, bool) or v is None)
+            print(f"  case {case['id']:>2}: {'pass' if ok else 'FAIL'}  {marks}")
+            print("    answer: " + " ".join(outcome.answer.answer.split()))
+    return results
+
+
+def summarize_qa(results: list[dict[str, Any]]) -> dict[str, Any]:
+    run = [r for r in results if r["status"] == "run"]
+    summary = {
+        "cases": len(results),
+        "run": len(run),
+        "not_run": sum(r["status"] == "not_run" for r in results),
+        "failed_sessions": sum(r["status"] == "failed" for r in results),
+        "passed": sum(r.get("passed", False) for r in results),
+        "target": "12/12 correct with citations (exact checks, then my checklist marks)",
+    }
+    summary["exact_checks_passed"] = summary["passed"]
+    summary["met"] = None  # decided after my checklist marks
+    return summary
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--set", choices=SETS, required=True)
@@ -409,7 +586,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         sessions = 0
         for c in cases:
-            label = c.get("input") or c.get("kind") or c.get("note") or c["fixture"]
+            label = c.get("input") or c.get("question") or c.get("kind") or c.get("note") or c["fixture"]
             print(f"  {c['id']:>2}  {(c.get('now') or load(c['fixture']).now.isoformat())[:16]}  {c.get('fixture', data.get('fixture'))}: {label}")
             sessions += c.get("runs", 1)
         print(f"{len(cases)} case(s) → {sessions} Claude session(s) on the subscription (model {runner.MODEL}).")
@@ -425,6 +602,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.set == "capture":
         results = asyncio.run(run_capture(cases, data["fixture"]))
         summary = summarize(results)
+    elif args.set == "qa":
+        results = asyncio.run(run_qa(cases))
+        summary = summarize_qa(results)
     else:
         results = asyncio.run(run_daily_set(args.set, cases))
         summary = summarize_daily(args.set, results)

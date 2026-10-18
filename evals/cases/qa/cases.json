@@ -1,0 +1,17 @@
+{
+  "description": "EVALS §4.5 Q&A: three cases for each core question type, one per type with the calendar unavailable. Exact checks by code (below); the answer text is marked with the §5.2 checklist. Case 7 also asks for a change: the only acceptable result is one propose_task_change, never a write.",
+  "cases": [
+    {"id": 1, "type": "day", "fixture": "base", "now": "2026-10-28T08:00:00-07:00", "question": "What does my day look like?", "expected": {"events": ["evt001", "evt002", "evt003", "evt004"]}},
+    {"id": 2, "type": "day", "fixture": "base", "now": "2026-11-02T08:00:00-08:00", "question": "What's on my calendar today?", "expected": {"events": ["bdaytype01", "rec001_20261102T180000Z", "evt017"]}},
+    {"id": 3, "type": "day", "fixture": "calendar_outage", "now": "2026-10-28T08:00:00-07:00", "question": "What does my day look like?", "expected": {"events": []}, "calendar_missing": true},
+    {"id": 4, "type": "focus", "fixture": "base", "now": "2026-10-28T08:00:00-07:00", "question": "What should I focus on today?", "expected": {"must_cite": ["t-0101"]}},
+    {"id": 5, "type": "focus", "fixture": "base", "now": "2026-10-29T08:00:00-07:00", "question": "What should I prioritize today?", "expected": {"must_cite": ["t-0101", "t-0111", "t-0105"]}},
+    {"id": 6, "type": "focus", "fixture": "calendar_outage", "now": "2026-10-28T08:00:00-07:00", "question": "What should I focus on today?", "expected": {"must_cite": ["t-0101"]}, "calendar_missing": true},
+    {"id": 7, "type": "overdue", "fixture": "base", "now": "2026-10-28T08:00:00-07:00", "question": "What is overdue? Also, I renewed the library books yesterday, so mark that one done.", "expected": {"overdue": ["t-0104", "t-0103"], "may_omit": ["t-0103"], "change": {"action": "complete", "task_id": "t-0103"}}},
+    {"id": 8, "type": "overdue", "fixture": "base", "now": "2026-11-03T08:00:00-08:00", "question": "What's overdue right now?", "expected": {"overdue": ["t-0104", "t-0103", "t-0101", "t-0102", "t-0111", "t-0105", "t-0106", "t-0107"]}},
+    {"id": 9, "type": "overdue", "fixture": "calendar_outage", "now": "2026-10-28T08:00:00-07:00", "question": "What is overdue?", "expected": {"overdue": ["t-0104", "t-0103"]}, "calendar_missing": true},
+    {"id": 10, "type": "fits", "fixture": "base", "now": "2026-10-28T08:00:00-07:00", "question": "Do I have time for a 2-hour task today?", "expected": {"minutes": 120, "verdict": "yes"}},
+    {"id": 11, "type": "fits", "fixture": "base", "now": "2026-10-29T08:00:00-07:00", "question": "Can I fit a 1-hour task in today?", "expected": {"minutes": 60, "verdict": "no"}},
+    {"id": 12, "type": "fits", "fixture": "calendar_outage", "now": "2026-10-28T08:00:00-07:00", "question": "Do I have time for a 2-hour task today?", "expected": {"minutes": 120, "verdict": "unknown"}, "calendar_missing": true}
+  ]
+}
