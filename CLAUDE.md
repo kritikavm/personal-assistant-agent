@@ -80,8 +80,12 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 
 - **M9 · Task capture and eval runner** built (2026-10-16), verified and approved by the user: `flows/capture.py`, `submit_task` (one retry), CLI `add`, `evals/run_evals.py`, 35 capture cases. First eval 34/35, all targets met. Case 32 fixed in the prompt (partly checked; the full set reruns in M16). pytest 526 + 1 skipped.
 
+- **M10 · Daily run on fakes** built (2026-10-16), verified and approved by the user: `flows/daily_run.py`, `submit_daily_plan`, CLI `run now [--dry-run]` / `run scheduled`, code-filled brief lists. Evals met: extras 7/8, brief 6/6 no invented and 5/6 checklist (cases 4 and 5 fixed in the prompt, partly checked; full rerun in M16), repeat 0 duplicates. pytest 597 + 1 skipped.
+
+- **M11 · Q&A (`ask`)** built (2026-10-17), verified and approved by the user: `flows/ask.py`, `submit_answer` (citation and uncited-mention checks), `propose_task_change` (queued, `Apply? [y/N]` each), CLI `ask`, 12 `qa` cases. Rerun after two check-bug fixes and a prompt fix: 12/12 exact, 12/12 checklist. Prompt polish partly checked (full rerun in M16). pytest 670 + 1 skipped.
+
 **Next step**
-- M10 · Daily run on fakes: built and committed; evals met (extras 7/8, brief 6/6 no invented and 5/6 checklist, repeat 0 duplicates). Daily-prompt fix for brief cases 4 and 5 is partly checked (full brief rerun in M16). Waiting for the user's M10 review, then M11.
+- M12 · Prompt injection and failure handling: in progress.
 
 ## Open issues / verify during build
 

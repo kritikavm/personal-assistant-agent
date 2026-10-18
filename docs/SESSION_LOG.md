@@ -4,6 +4,32 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 ---
 
+## 2026-10-17
+
+**What we did**
+- The user marked the two rerun briefs (cases 4 and 5: both pass the full checklist); recorded in EVALS §7.1/§7.2. M10 approved.
+- M11 · Q&A (`ask`), built (no new installs; no eval run yet):
+  - `submit_answer`: cited IDs must be of that type and returned this session; an answer that names a shown item (ID, or full title of 4+ characters, whole words) without citing it is rejected (one retry). Sources are printed from the data, not Claude's copy.
+  - `propose_task_change`: create / update / complete / delete, checked in the handler (open tasks shown this session only, one change per task, at most 5, create uses the capture rules, update can't complete or clear required fields). Invalid changes get one retry in all and never fail the answer. Nothing is written in the session.
+  - `flows/ask.py`: one `ask` session (max 10 turns), code adds the calendar / tasks gaps, `apply_change` through the task store.
+  - CLI `ask "<question>"`: answer, sources, data gaps, then `Apply? [y/N]` for each change; the run lock is taken only for a confirmed write (like `add`). Unreadable tasks still get an answer with the gap.
+  - Evals: set `qa` (12 cases, 3 per type, one per type with the calendar unavailable; case 7 also asks to mark a task done). Exact checks: events, must-cite, overdue set, yes/no verdict, no unasked changes, known clock times, calendar gap said. Checklist marks are the user's.
+- Checks: pytest 667 passed, 1 skipped; 12 of 12 mutations caught.
+- The user approved cases 1–12 and choices 1–8. Docs updated: ARCHITECTURE §6.3 (lock only for a confirmed write, snapshot, yes/no and fits rules, failed writes) and the `submit_answer` / `propose_task_change` rows; EVALS §4.5 (exact checks per type, extra code checks, cases).
+- First `qa` eval (12 Sonnet sessions, 0 retries): 10/12 exact checks. Cases 7 and 9 failed `overdue_exact` because the answers also named (and so had to cite) the two due-today tasks; case 9 also didn't mention the calendar in an overdue answer. Change in case 7 proposed correctly; no unasked changes. Recorded in EVALS §7.1/§7.2, nothing changed yet.
+
+- The user marked the answers: 9/12 pass the full checklist; 4, 5 and 6 fail *answers the question*. Fixed two check bugs openly (recorded in §7.2, cases unchanged): the overdue check is now "every overdue task cited, nothing wrongly called overdue", and the calendar mention is required only for my-day, focus and fits questions. Re-scored on the first run's answers, cases 7 and 9 pass. Ask prompt fixed: answer only what was asked, no IDs in the text, no follow-up offers, strict focus ranking (prompt `b1fa8bee`). pytest 670 passed, 1 skipped.
+
+- EVALS §4.5 updated to match the fixed checks. Full `qa` rerun (12 sessions, prompt `b1fa8bee`): 12/12 exact checks; checklist marks pending. Recorded in EVALS §7.1/§7.2.
+
+- The user marked the rerun: 12/12 pass the full checklist, target met. Prompt polish (no sessions; partly checked until M16): full focus ranking, 24-hour times, "your" not "my", no unasked sections (prompt `6577809a`).
+- M11 approved; committed M11 code and docs.
+
+**Next step**
+- M12 · Prompt injection and failure handling.
+
+---
+
 ## 2026-10-16
 
 **What we did**
