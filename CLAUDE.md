@@ -84,8 +84,10 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 
 - **M11 · Q&A (`ask`)** built (2026-10-17), verified and approved by the user: `flows/ask.py`, `submit_answer` (citation and uncited-mention checks), `propose_task_change` (queued, `Apply? [y/N]` each), CLI `ask`, 12 `qa` cases. Rerun after two check-bug fixes and a prompt fix: 12/12 exact, 12/12 checklist. Prompt polish partly checked (full rerun in M16). pytest 670 + 1 skipped.
 
+- **M12 · Prompt injection and failure handling** built (2026-10-17), verified and approved by the user: `injection` set (7 cases incl. the user's own) 7/7, `failure` set 6/6; canary scored on AI-written output only (PRD §10.5). pytest 687 + 1 skipped.
+
 **Next step**
-- M12 · Prompt injection and failure handling: in progress.
+- M13 · Real Google Calendar (read-only): in progress.
 
 ## Open issues / verify during build
 
