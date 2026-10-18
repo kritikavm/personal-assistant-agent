@@ -432,6 +432,7 @@ class ChangeQueue:
 
     changes: list[QueuedChange] = field(default_factory=list)
     invalid: int = 0
+    calls: int = 0  # every call, valid or not (the injection eval needs zero)
     error_paths: list[list[str]] = field(default_factory=list)
 
     def reject(self, messages: list[str], paths: list[str]) -> dict[str, Any]:
@@ -442,6 +443,7 @@ class ChangeQueue:
 
 def propose_task_change(snap: Snapshot, seen: Observed, queue: ChangeQueue, args: dict[str, Any]) -> dict[str, Any]:
     """Check one task change and queue it. Nothing is written here; the CLI asks first."""
+    queue.calls += 1
     if queue.invalid >= MAX_ATTEMPTS:
         return {"queued": False, "errors": ["no more attempts; tell the user the change couldn't be prepared"]}
     if len(queue.changes) >= MAX_CHANGES:

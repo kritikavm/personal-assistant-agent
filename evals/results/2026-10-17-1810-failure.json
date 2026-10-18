@@ -1,0 +1,128 @@
+{
+  "set": "failure",
+  "started": "2026-10-17T18:10:07-07:00",
+  "finished": "2026-10-17T18:10:23-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "3faa9692",
+  "code_version": "088e609+dirty",
+  "fixture": "per case",
+  "summary": {
+    "cases": 6,
+    "run": 6,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "passed": 6,
+    "target": "every case passes (EVALS §4.6); no reruns",
+    "met": true
+  },
+  "cases": [
+    {
+      "id": 1,
+      "layer": "B",
+      "kind": "calendar outage",
+      "status": "run",
+      "seeded_kept": 19,
+      "summary": "Calendar is unavailable, so I can't say how busy today is or when you're free. Tasks: the expense report (high priority) is due today at 17:00, and the birthday card for Alex is due today. Overdue are renewing library books and repotting the monstera. Tomorrow is heavy: rent is due 07:30 and the interview questions are due 12:00.",
+      "focus": [
+        "Submit expense report (30 min) before its 17:00 deadline",
+        "Work on Prepare interview questions (90 min, due tomorrow 12:00)",
+        "Send rent payment today, since it's due tomorrow at 07:30",
+        "Buy birthday card for Alex (due today)",
+        "Renew library books (overdue)"
+      ],
+      "data_gaps": [
+        "Calendar data is missing: The calendar couldn't be reached or its login expired (run `assistant auth google` if this continues). Meetings and birthdays aren't in this brief; their existing reminders were kept."
+      ],
+      "turns": 7,
+      "checks": {
+        "status_partial": true,
+        "gap_in_brief": true,
+        "summary_says_calendar_missing": true,
+        "meeting_birthday_reminders_kept": true,
+        "no_schedule_invented": true
+      },
+      "passed": true,
+      "checklist": {
+        "grounded": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "useful_focus": null
+      }
+    },
+    {
+      "id": 2,
+      "layer": "A",
+      "kind": "Reminders access denied / list missing",
+      "status": "run",
+      "tests": [
+        "tests/test_daily_run.py::test_reminders_blocked_still_writes_brief_and_notification",
+        "tests/test_daily_run.py::test_reminders_blocked_with_state_saves_only_last_runs",
+        "tests/test_daily_run.py::test_check_access_crash_blocks_writes"
+      ],
+      "pytest": "5 passed in 0.36s",
+      "checks": {
+        "tests_pass": true
+      },
+      "passed": true
+    },
+    {
+      "id": 3,
+      "layer": "A",
+      "kind": "\"Agent Reminders\" not On My Mac",
+      "status": "run",
+      "tests": [
+        "tests/test_daily_run.py::test_reminders_blocked_still_writes_brief_and_notification[not_on_my_mac]"
+      ],
+      "pytest": "1 passed in 0.33s",
+      "checks": {
+        "tests_pass": true
+      },
+      "passed": true
+    },
+    {
+      "id": 4,
+      "layer": "A",
+      "kind": "usage unavailable / exhausted",
+      "status": "run",
+      "tests": [
+        "tests/test_daily_run.py::test_ai_failure_writes_nothing",
+        "tests/test_daily_run.py::test_cli_scheduled_failure_notifies_with_the_type_only",
+        "tests/test_runner.py::test_limit_hit_or_overage_stops_at_once"
+      ],
+      "pytest": "7 passed in 0.33s",
+      "checks": {
+        "tests_pass": true
+      },
+      "passed": true
+    },
+    {
+      "id": 5,
+      "layer": "A",
+      "kind": "malformed AI output",
+      "status": "run",
+      "tests": [
+        "tests/test_daily_run.py::test_malformed_output_one_retry_then_fails_with_field_paths_only",
+        "tests/test_daily_run.py::test_invalid_then_fixed_is_accepted"
+      ],
+      "pytest": "2 passed in 0.11s",
+      "checks": {
+        "tests_pass": true
+      },
+      "passed": true
+    },
+    {
+      "id": 6,
+      "layer": "A",
+      "kind": "step limit reached",
+      "status": "run",
+      "tests": [
+        "tests/test_daily_run.py::test_ai_failure_writes_nothing"
+      ],
+      "pytest": "3 passed in 0.09s",
+      "checks": {
+        "tests_pass": true
+      },
+      "passed": true
+    }
+  ]
+}

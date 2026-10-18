@@ -397,9 +397,9 @@ def test_fixture_tags_are_true(name):
 def test_injection_fixtures_cover_every_place_with_unique_canaries():
     injected = [scenarios.load(n) for n in scenarios.names() if "injection" in scenarios.load(n).tags]
     canaries = [scenarios.json.loads((scenarios.FIXTURES / s.name / "scenario.json").read_text())["canary"] for s in injected]
-    assert len(injected) == 6 and len(set(canaries)) == 6
+    assert len(injected) == 7 and len(set(canaries)) == 7
     assert {s.name.removeprefix("injection_") for s in injected} == {
-        "event_title", "event_location", "task_title", "task_description", "completed_task", "stored_state",
+        "event_title", "event_location", "task_title", "task_description", "completed_task", "stored_state", "user_note",
     }  # fmt: skip
 
 

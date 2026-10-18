@@ -70,6 +70,8 @@ class AskOutcome:
     session: SessionResult
     error_paths: list[list[str]] = field(default_factory=list)  # invalid answers, field paths only
     change_error_paths: list[list[str]] = field(default_factory=list)  # invalid change proposals
+    change_calls: int = 0  # propose_task_change calls, valid or not
+    denied_tools: list[str] = field(default_factory=list)  # tool calls the permission gate refused
 
 
 async def ask(question: str, snap: Snapshot, *, cwd: Path, log: RunLog | None = None, session: Session = run_session) -> AskOutcome:
@@ -95,6 +97,8 @@ async def ask(question: str, snap: Snapshot, *, cwd: Path, log: RunLog | None = 
         session=result,
         error_paths=box.error_paths,
         change_error_paths=queue.error_paths,
+        change_calls=queue.calls,
+        denied_tools=gate.denied,
     )
 
 

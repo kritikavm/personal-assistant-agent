@@ -249,6 +249,7 @@ class RunResult:
     brief_path: Path | None = None
     session: SessionResult | None = None
     error_paths: list[list[str]] = field(default_factory=list)
+    denied_tools: list[str] = field(default_factory=list)  # tool calls the permission gate refused
 
 
 def already_ran_today(data_dir: Path, today: date) -> bool:
@@ -308,8 +309,13 @@ def preflight(
     return Preflight(snap, check.state, blocked)
 
 
-async def plan_session(snap: Snapshot, *, cwd: Path, log: RunLog | None = None, session: Session = run_session) -> tuple[DailyPlanProposal, SessionResult, list[list[str]]]:
-    """The `run` session. Raises AgentFailure (usage, step limit, malformed output, no proposal, …)."""
+async def plan_session(
+    snap: Snapshot, *, cwd: Path, log: RunLog | None = None, session: Session = run_session
+) -> tuple[DailyPlanProposal, SessionResult, list[list[str]], list[str]]:
+    """The `run` session: (proposal, session result, invalid attempts' field paths, denied tool names).
+
+    Raises AgentFailure (usage, step limit, malformed output, no proposal, …).
+    """
     seen, box = Observed(), ProposalBox()
     gate = PermissionGate("run", allowlist("run"), snap.today, log)
     servers, names = build_server("run", snap, seen, box)
@@ -320,7 +326,7 @@ async def plan_session(snap: Snapshot, *, cwd: Path, log: RunLog | None = None, 
         if log:
             for i, paths in enumerate(box.error_paths, 1):
                 log.event("proposal_invalid", attempt=i, field_paths=paths)
-    return box.result("submit_daily_plan"), result, box.error_paths
+    return box.result("submit_daily_plan"), result, box.error_paths, gate.denied
 
 
 def unavailable_sources(snap: Snapshot) -> frozenset[SourceType]:
@@ -366,7 +372,7 @@ async def daily_run(
 
     pre = preflight(data_dir, prefs, now, calendar, calendar_error, reminders, dry_run, log)
     snap = pre.snap
-    proposal, session_result, error_paths = await plan_session(snap, cwd=data_dir, log=log, session=session)
+    proposal, session_result, error_paths, denied = await plan_session(snap, cwd=data_dir, log=log, session=session)
     if log:
         log.event("plan_proposed", count=len(proposal.extra_reminders), attempt=len(error_paths) + 1)
 
@@ -394,7 +400,7 @@ async def daily_run(
         calendar_available=snap.calendar.available,
         tasks_available=snap.tasks_error is None,
     )
-    result = RunResult(brief=brief, proposal=proposal, plan=plan, diff=diff, blocked=pre.blocked, session=session_result, error_paths=error_paths)
+    result = RunResult(brief=brief, proposal=proposal, plan=plan, diff=diff, blocked=pre.blocked, session=session_result, error_paths=error_paths, denied_tools=denied)
 
     if dry_run:
         brief.reminders = _reminders_line(diff, None, pre.blocked, True)
