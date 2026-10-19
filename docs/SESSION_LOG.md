@@ -36,8 +36,28 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 - The user marked the outage summary (passes the full checklist) and approved M12; committed M12 code and docs.
 
+- M13 · Real Google Calendar, code built on fakes (no Google calls yet):
+  - With the user's approval, installed `google-api-python-client` 2.201.0, `google-auth-oauthlib` 1.5.0 and `keyring` 25.7.0 (16 dependencies came with them); `pip-audit` clean.
+  - `integrations/google_auth.py`: token JSON in the Keychain (service `personal-assistant-agent.google-calendar`, account `oauth-token`), refresh (a refused refresh token → new access state `expired`), tokeninfo scope check.
+  - `GoogleCalendarClient`: `events.list` only, FR-2 fields only (`fields` mask), today…+7, single events, paging; `birthdays` maps to the contacts birthdays calendar and a 403/404 skips it (logged as a count); any other error → calendar unavailable.
+  - CLI `auth google` (client file must exist with mode 600; the token is saved only if tokeninfo shows exactly `calendar.events.readonly` and there's a refresh token); `doctor` shows the granted scope or "expired".
+  - Tests never touch the real Keychain or Google (autouse fakes). pytest 719 passed, 1 skipped; 10 of 10 mutations caught.
+- The user did the Google Cloud steps. D4 changed: publishing now needs a homepage and privacy policy URL, so the app stays in *Testing* with the user as the only test user, and the login ends 7 days after sign-in. Updated ARCHITECTURE §11 and the failure table, SECURITY §11, the plan's M13 step and CLAUDE.md. `auth google` now stores the sign-in time with the token (kept across refreshes); `doctor` shows when the login ends and warns in the last 2 days. pytest 729 passed, 1 skipped.
+
+- The user moved the client file into `data/secrets/` with Finder (600, ignored by git; this session can't read `~/Downloads`, so a leftover copy there wasn't checked) and ran `assistant auth google`: connected, exactly `calendar.events.readonly`.
+- Live checks:
+  - `doctor`: Claude, preferences, Google Calendar (scope, nothing else) and login end all OK; exit 0. One WARN: a Finder `.DS_Store` in `data/` at 644.
+  - Safety tests 1 and 2 pass with the real Google libraries installed. tokeninfo shows no `openid`; refresh token present.
+  - Read-only probes (counts and ID shapes only, nothing personal printed): no events today…+7; over a wider window, primary event IDs incl. a recurring instance match the log format, and primary returns `birthday` events by default. The contacts birthdays calendar exists; its event ID has uppercase letters and fails the log format, and its one birthday is the same as the primary `birthday` event (same date and title), so it would get two reminders.
+  - `ask "What does my day look like?"` (1 session, approved): "no events today"; the calendar was loaded (0 events, 0 skipped); no task was due today or overdue. The SDK printed a `CanUseToolShadowedWarning` (`can_use_tool` isn't called for allowlisted tools). That's expected by design (ARCHITECTURE §7); the PreToolUse hook still ran (`tool_allowed` logged).
+  - SECURITY §8 now names the Keychain item and the `security delete-generic-password` command.
+
+- The user's M13 decisions (2026-10-19): preferences list `primary` only (example and the user's file; the eval fixtures keep `birthdays` to test that path, and the fixture-equals-example test now skips the `calendars` block); ID format change not needed; the SDK shadow warning hidden. Doc additions approved and applied to ARCHITECTURE (`events.list` only, fields mask, `expired` state, birthdays alias, `google_auth.py`). `doctor` ignores Finder's `.DS_Store`; `data/.DS_Store` deleted. pytest 731 passed, 1 skipped.
+- The user flagged that the wide calendar probe went beyond the 7-day scope without asking. The probe scripts were deleted, and a rule was added to CLAUDE.md: ask before accessing real data beyond what the current step needs.
+- M13 approved; committed code and docs.
+
 **Next step**
-- M13 · Real Google Calendar (read-only).
+- M14 · Real Reminders and notifications.
 
 ---
 

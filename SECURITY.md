@@ -141,7 +141,7 @@ Related failure-handling tests (PRD §10.6): calendar outage, missing Reminders 
 To stop the agent completely and remove its access:
 
 1. **Stop the schedule:** `assistant schedule uninstall` (removes the LaunchAgent plist and unloads it). Check with `launchctl list | grep assistant`.
-2. **Delete the Google token:** remove the project's Google token item from the macOS Keychain (Keychain Access app). The item's exact service name is fixed in code and will be listed here during the build.
+2. **Delete the Google token:** remove the Keychain item with service `personal-assistant-agent.google-calendar` and account `oauth-token` (fixed in `integrations/google_auth.py`). Either delete it in the Keychain Access app (login keychain, search for the service name) or run `security delete-generic-password -s personal-assistant-agent.google-calendar -a oauth-token`.
 3. **Revoke Google access:** Google Account → Security → *Third-party apps with account access* → remove this app. This invalidates any copy of the token.
 4. **Optional, full removal:**
    - delete `data/` (tasks, state, briefs, logs, `secrets/`)
@@ -179,7 +179,7 @@ Category names as listed in the OWASP GenAI Security Project's announcement of t
 - **Data sent to Claude** is handled under Anthropic's terms for my subscription. The project doesn't control retention there.
 - **AppleScript access** is granted per app by macOS. Our code limits itself to "Agent Reminders", but macOS doesn't enforce a per-list boundary. The list restriction is enforced by our code and tests.
 - **Reminder alerts on the lock screen:** the alerts that the Reminders app itself shows include the reminder title. Hiding these on a locked screen is a macOS setting, not something this project controls. Accepted as a known limitation; setup step 5 (ARCHITECTURE §11) tells me to set Notifications → Show previews → **When Unlocked**.
-- **Google app status:** the OAuth project is *In production* but unverified, for personal use only. It is not meant to be shared with other users.
+- **Google app status:** the OAuth app stays in *Testing*, unverified, with me as the only test user, for personal use only (D4). It is not meant to be shared with other users. In *Testing*, Google ends the login 7 days after sign-in, so I sign in again about once a week; `doctor` warns in the last 2 days. Missing that only means the calendar is unavailable until I sign in again (FR-22).
 - **Model quality:** guardrails limit what the model can *do*, not whether its brief or answers are correct. Evals cover accuracy (PRD §10.2–10.4).
 - **Out of scope for Phase 1:** email, calendar writes, RAG, multi-agent setups, a web UI and cloud hosting. Phase 3 tools (e.g. email, plant care) will each need their own scopes, allowlist entries, safety tests and an explicit approval step before they're turned on.
 

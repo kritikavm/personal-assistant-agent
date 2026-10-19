@@ -238,7 +238,7 @@ This plan breaks Phase 1 into small milestones. Each one can be built and tested
   - birthdays calendar missing → skipped and logged
   - the Keychain item name is recorded for the kill-switch steps (SECURITY §8)
 - **You do:**
-  - Google Cloud: enable the Calendar API, create a desktop OAuth client, add only the `calendar.events.readonly` scope, set the app to *In production* (ARCHITECTURE §11, step 1)
+  - Google Cloud: enable the Calendar API, create a desktop OAuth client, add only the `calendar.events.readonly` scope, leave the app in *Testing* with me as the test user (D4 changed 2026-10-18; ARCHITECTURE §11, step 1)
   - save the client file as `data/secrets/google_oauth_client.json` (`chmod 600`)
   - run `assistant auth google` and approve in the browser
 - **Verify:** `uv run assistant auth google` · `uv run assistant doctor` · `uv run assistant ask "What does my day look like?"`
