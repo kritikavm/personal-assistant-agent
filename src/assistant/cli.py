@@ -1,11 +1,13 @@
 """Command-line entry point."""
 
 import asyncio
+import json
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import typer
 
@@ -18,17 +20,19 @@ from assistant.flows.daily_run import NOTIFY_TITLE, RunResult, daily_run, failur
 from assistant.guard import (
     BillingCredentialError,
     CalendarAccess,
-    NoGoogleToken,
     RunLockedError,
+    READONLY_SCOPE,
     ScopeError,
     TokenInfoSource,
     check_billing,
     check_calendar_scope,
+    scopes_from_tokeninfo,
     run_lock,
     startup_checks,
     startup_guard,
 )
-from assistant.integrations.google_calendar import CalendarClient, GoogleCalendarClient
+from assistant.integrations import google_auth
+from assistant.integrations.google_calendar import CalendarClient, GoogleCalendarClient, GoogleEventsPages
 from assistant.integrations.notify import MacNotifier, Notifier
 from assistant.integrations.reminders import AGENT_LIST, AppleRemindersClient, ReminderAccess, RemindersClient
 from assistant.logging_setup import BRIEFS_DIR, RunLog
@@ -46,6 +50,8 @@ state_app = typer.Typer(help="Repair state.json (no AI).", no_args_is_help=True)
 app.add_typer(state_app, name="state")
 run_app = typer.Typer(help="The daily run: morning brief and reminders.", no_args_is_help=True)
 app.add_typer(run_app, name="run")
+auth_app = typer.Typer(help="Connect accounts (Google Calendar, read-only).", no_args_is_help=True)
+app.add_typer(auth_app, name="auth")
 
 
 @app.callback()
@@ -60,8 +66,8 @@ def version() -> None:
 
 
 def google_tokens() -> TokenInfoSource:
-    """Where the Google token's scopes come from. The Keychain source arrives in M13."""
-    return NoGoogleToken()
+    """Where the Google token's scopes come from: the token in the Keychain. Tests replace this."""
+    return google_auth.KeychainTokenInfo()
 
 
 @app.command()
@@ -103,6 +109,7 @@ def doctor() -> None:
     else:
         typer.echo("OK    data folder: permissions are 700/600")
 
+    prefs = None
     try:
         prefs = config.load_preferences(data_dir / config.PREFERENCES_FILE)
     except config.PreferencesError as e:
@@ -119,13 +126,29 @@ def doctor() -> None:
         typer.echo(f"FAIL  Google Calendar: {e}")
     else:
         if calendar is CalendarAccess.connected:
-            typer.echo("OK    Google Calendar: connected, read-only scope only")
+            typer.echo(f"OK    Google Calendar: connected; granted scope: {READONLY_SCOPE} (nothing else)")
+            typer.echo(_login_expiry_line(prefs.tz if prefs else None))
         elif calendar is CalendarAccess.not_connected:
-            typer.echo("WARN  Google Calendar: not connected (runs continue with tasks only)")
+            typer.echo("WARN  Google Calendar: not connected (runs continue with tasks only); run `assistant auth google`")
+        elif calendar is CalendarAccess.expired:
+            typer.echo("WARN  Google Calendar: the login expired or was revoked (runs continue with tasks only); run `assistant auth google`")
         else:
             typer.echo("WARN  Google Calendar: token scopes couldn't be checked; the calendar won't be used")
 
     raise typer.Exit(code=1 if errors else 0)
+
+
+def _login_expiry_line(tz) -> str:
+    """The 7-day Testing-mode login (D4): when it ends, with a warning in its last EXPIRY_WARN."""
+    expires = google_auth.login_expires_at(google_auth.load_token_info())
+    if expires is None:
+        return "WARN  Google login: sign-in time unknown, so the 7-day expiry can't be shown; run `assistant auth google` to reset it"
+    left = expires - datetime.now(expires.tzinfo)
+    when = f"{expires.astimezone(tz):%a %d %b %H:%M}"
+    if left <= google_auth.EXPIRY_WARN:
+        hours = max(0, int(left.total_seconds() // 3600))
+        return f"WARN  Google login: ends {when} (in {hours} h; the app is in Testing, so logins last 7 days); run `assistant auth google` before then"
+    return f"OK    Google login: ends {when} (the app is in Testing, so logins last 7 days)"
 
 
 # --- tasks (FR-11, FR-11a) ---------------------------------------------------------
@@ -522,7 +545,7 @@ def ask_command(question: str = typer.Argument(..., help='Your question, e.g. "W
             cal = calendar_window(calendar_client(prefs, now.date()), now.date())
         else:
             cal = CalendarResult(available=False, error=start.calendar.value)
-        log.event("calendar_loaded", ok=cal.available, count=len(cal.events), **({"error_code": cal.error} if cal.error else {}))
+        log.event("calendar_loaded", ok=cal.available, count=len(cal.events), skipped=len(cal.skipped_calendars), **({"error_code": cal.error} if cal.error else {}))
         snap = Snapshot(prefs, now, cal, open_tasks, completed, tasks_error)
         try:
             outcome = asyncio.run(ask(question, snap, cwd=data_dir, log=log))
@@ -577,7 +600,58 @@ def notifier() -> Notifier:
 
 def calendar_client(prefs: Preferences, today: date) -> CalendarClient:
     """The calendar client, used only when the token's scopes were confirmed. Tests replace it."""
-    return GoogleCalendarClient(prefs.calendars, prefs.tz, today)
+    return GoogleCalendarClient(prefs.calendars, prefs.tz, today, GoogleEventsPages(google_auth.load_credentials))
+
+
+# --- auth google (ARCHITECTURE §11 step 2, S-2, S-10) -------------------------------------------------
+
+
+def google_login(client_file: Path):
+    """The browser login. Tests replace this."""
+    return google_auth.run_login(client_file)
+
+
+@auth_app.command("google")
+def auth_google() -> None:
+    """Sign in to Google with read-only calendar access and keep the token in the Keychain."""
+    data_dir = config.default_data_dir()
+    client_file = data_dir / google_auth.CLIENT_FILE
+    if not client_file.is_file():
+        raise _fail([f"no OAuth client file at {client_file}. Download the desktop client JSON from Google Cloud, save it there, then `chmod 600` it."])
+    if client_file.stat().st_mode & 0o077:
+        raise _fail([f"{client_file} can be read by other users; run `chmod 600 {client_file}` first."])
+    prefs = None
+    try:
+        prefs = config.load_preferences(data_dir / config.PREFERENCES_FILE)
+    except config.PreferencesError:
+        pass  # the login doesn't need preferences; the log just uses UTC
+    tz = prefs.tz if prefs else ZoneInfo("UTC")
+    with RunLog(data_dir, "auth.google", tz) as log:
+        try:
+            creds = google_login(client_file)
+            scopes = scopes_from_tokeninfo(google_auth.fetch_tokeninfo(creds.token))
+        except Exception as e:  # noqa: BLE001 - the browser flow or Google failed; nothing is stored
+            log.error(e)
+            raise _fail([f"Google sign-in failed ({e.__class__.__name__}). Nothing was saved."]) from None
+        if scopes != {READONLY_SCOPE}:
+            log.event("google_scope_refused", count=len(scopes or ()))
+            granted = ", ".join(sorted(scopes or ())) or "(none readable)"
+            raise _fail(
+                [
+                    f"Google granted {granted}, not exactly {READONLY_SCOPE}. The token was NOT saved.",
+                    "Remove the app at myaccount.google.com → Security → Third-party apps with account access, fix the OAuth client's scopes, and sign in again.",
+                ]
+            )
+        if not creds.refresh_token:
+            log.event("google_no_refresh_token")
+            raise _fail(["Google returned no refresh token, so the daily run couldn't stay signed in. Remove the app's access in your Google Account and sign in again."])
+        signed_in = datetime.now(UTC)
+        google_auth.save_token_info({**json.loads(creds.to_json()), google_auth.SIGNED_IN_AT: signed_in.isoformat()})
+        log.event("google_connected")
+    typer.echo(f"Connected. Granted scope: {READONLY_SCOPE} (nothing else).")
+    typer.echo(f'Token saved in the macOS Keychain (service "{google_auth.KEYCHAIN_SERVICE}").')
+    expires = signed_in + timedelta(days=google_auth.LOGIN_DAYS)
+    typer.echo(f"The app is in Testing, so this login ends {expires.astimezone(tz):%a %d %b %H:%M}; `assistant doctor` warns 2 days before.")
 
 
 _GUARD_FAILURES = {

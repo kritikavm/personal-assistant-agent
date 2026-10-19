@@ -181,7 +181,7 @@ def test_doctor_ok(data_dir):
     assert "OK    preferences: valid" in result.output
     assert "OK    location:" in result.output
     warnings = [line for line in result.output.splitlines() if line.startswith("WARN")]
-    assert warnings == ["WARN  Google Calendar: not connected (runs continue with tasks only)"]  # until M13
+    assert warnings == ["WARN  Google Calendar: not connected (runs continue with tasks only); run `assistant auth google`"]
 
 
 def test_doctor_warns_on_644_file(data_dir):
@@ -218,3 +218,16 @@ def test_doctor_creates_missing_data_dir(data_dir):
     assert result.exit_code == 1  # no preferences yet
     assert mode(data_dir) == 0o700
     assert "created" in result.output and "not found" in result.output
+
+
+def test_finder_ds_store_is_ignored(tmp_path):
+    d = tmp_path / "data"
+    config.ensure_data_dir(d)
+    for folder in (d, d / "secrets"):
+        folder.mkdir(mode=0o700, exist_ok=True)
+        (folder / ".DS_Store").write_bytes(b"finder")
+        (folder / ".DS_Store").chmod(0o644)
+    assert config.permission_issues(d) == []
+    (d / "notes.json").write_text("{}")
+    (d / "notes.json").chmod(0o644)
+    assert [i.path.name for i in config.permission_issues(d)] == ["notes.json"]

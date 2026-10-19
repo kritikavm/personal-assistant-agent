@@ -6,6 +6,7 @@ No real Claude calls: the SDK stream is faked with the SDK's own message types.
 import asyncio
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -402,3 +403,16 @@ def test_backstop_strips_billing_variables_even_if_the_check_were_skipped(monkey
 
     asyncio.run(run_session("hi", build_options(system_prompt="x", max_turns=1, cwd=Path("/tmp")), query_fn=query))
     assert not set(BILLING_VARS) & set(seen["env"])
+
+
+
+
+def test_only_the_shadowed_can_use_tool_warning_is_hidden():
+    # A fresh interpreter: pytest resets warning filters for each test.
+    code = (
+        "import warnings, claude_agent_sdk, assistant.agent.runner\n"
+        "warnings.warn('shadowed-msg', claude_agent_sdk.CanUseToolShadowedWarning)\n"
+        "warnings.warn('other-msg', UserWarning)\n"
+    )
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    assert "shadowed-msg" not in out.stderr and "other-msg" in out.stderr

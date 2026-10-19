@@ -16,6 +16,7 @@ M7: one session with no tools. Every session:
 import json
 import os
 import subprocess
+import warnings
 from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -36,6 +37,10 @@ from claude_agent_sdk import (
 )
 
 from assistant.guard import BILLING_VARS, check_billing
+
+# Expected by design (ARCHITECTURE §7): the allowlisted `pa` tools are auto-approved before `can_use_tool`
+# runs, and the PreToolUse hook checks every call instead. Hidden so it doesn't clutter CLI output (M13).
+warnings.filterwarnings("ignore", category=claude_agent_sdk.CanUseToolShadowedWarning)
 
 # Built-in tools, disallowed by name as well as switched off with tools=[] (S-5).
 DISALLOWED_BUILTINS = (

@@ -7,8 +7,9 @@ working_hours:
   start: "09:00"
   end: "18:00"
 calendars:
-  - primary
-  - birthdays                      # used only if it exists; skipped otherwise
+  - primary                        # includes Google's birthday events
+  # add `- birthdays` only if your birthdays aren't on primary (the old contacts
+  # birthdays calendar repeats them, which would mean two reminders each)
 reminders:
   meetings:
     before: 60m                    # 1 hour before start

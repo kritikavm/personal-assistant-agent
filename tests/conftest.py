@@ -15,3 +15,22 @@ def _no_billing_variables(monkeypatch):
 def _fake_claude_login(monkeypatch):
     """doctor never calls the real CLI in tests. Tests of the login check override this."""
     monkeypatch.setattr(runner, "login_status", lambda: runner.LoginStatus(True, "subscription login (pro)"))
+
+
+@pytest.fixture(autouse=True)
+def keychain(monkeypatch):
+    """No test reads or writes the real macOS Keychain or calls Google. Returns the in-memory store."""
+    import keyring
+
+    from assistant.integrations import google_auth
+
+    store: dict[tuple[str, str], str] = {}
+    monkeypatch.setattr(keyring, "get_password", lambda service, account: store.get((service, account)))
+    monkeypatch.setattr(keyring, "set_password", lambda service, account, value: store.__setitem__((service, account), value))
+
+    def no_network(*a, **k):
+        raise AssertionError("tests must not call Google")
+
+    monkeypatch.setattr(google_auth, "fetch_tokeninfo", no_network)
+    monkeypatch.setattr(google_auth, "run_login", no_network)
+    return store

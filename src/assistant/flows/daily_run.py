@@ -103,6 +103,7 @@ def free_blocks(snap: Snapshot) -> list[dict]:
 CALENDAR_GAPS = {
     "not_connected": "Google Calendar isn't connected yet (run `assistant auth google`).",
     "unverified": "The Google token's scopes couldn't be checked, so the calendar wasn't used.",
+    "expired": "The Google login expired or was revoked (run `assistant auth google`).",
 }
 
 _BLOCKED = {
@@ -301,7 +302,7 @@ def preflight(
     elif check.state is None:
         blocked = check.problem.value
     if log:
-        log.event("calendar_loaded", ok=cal.available, count=len(cal.events), **({"error_code": cal.error} if cal.error else {}))
+        log.event("calendar_loaded", ok=cal.available, count=len(cal.events), skipped=len(cal.skipped_calendars), **({"error_code": cal.error} if cal.error else {}))
         log.event("tasks_loaded", ok=tasks_error is None, count=len(tasks))
         log.event("reminders_preflight", ok=blocked is None, **({"status": blocked} if blocked else {}))
         if check.backup:

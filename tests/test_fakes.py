@@ -69,14 +69,12 @@ def test_fakes_and_real_clients_share_the_interface(protocol, classes):
 
 def test_instances_satisfy_protocols():
     assert isinstance(BASE.calendar_client(), CalendarClient)
-    assert isinstance(GoogleCalendarClient(["primary"], TZ, TODAY), CalendarClient)
+    assert isinstance(GoogleCalendarClient(["primary"], TZ, TODAY, pages=None), CalendarClient)
     assert isinstance(FakeReminders(), RemindersClient) and isinstance(AppleRemindersClient(), RemindersClient)
     assert isinstance(FakeNotifier(), Notifier) and isinstance(MacNotifier(), Notifier)
 
 
-def test_real_clients_make_no_calls_yet():
-    with pytest.raises(NotImplementedError, match="M13"):
-        GoogleCalendarClient(["primary"], TZ, TODAY).list_events(TODAY, TODAY)
+def test_real_reminders_and_notifier_make_no_calls_yet():
     for call in (lambda c: c.check_access(), lambda c: c.list_items(), lambda c: c.delete("x")):
         with pytest.raises(NotImplementedError, match="M14"):
             call(AppleRemindersClient())
@@ -239,8 +237,28 @@ def test_fixture_loads_and_validates(name, tmp_path):
         assert sanitize({"task_id": t.id}) == {"task_id": t.id}, t.id
 
 
+def _without_calendars(text: str) -> str:
+    """The preferences text minus the `calendars:` block (its lines up to the next top-level key)."""
+    out, skipping = [], False
+    for line in text.splitlines():
+        if line.startswith("calendars:"):
+            skipping = True
+            continue
+        if skipping and line[:1] not in (" ", ""):
+            skipping = False
+        if not skipping:
+            out.append(line)
+    return "\n".join(out)
+
+
 def test_base_preferences_are_the_example():
-    assert (ROOT / "evals/fixtures/base/preferences.yaml").read_text() == (ROOT / "examples/preferences.yaml").read_text()
+    # Same except calendars: the fixtures keep the separate birthdays calendar to test that path (FR-1);
+    # the example uses primary only, which already carries Google's birthday events (M13 decision).
+    base = (ROOT / "evals/fixtures/base/preferences.yaml").read_text()
+    example = (ROOT / "examples/preferences.yaml").read_text()
+    assert _without_calendars(base) == _without_calendars(example)
+    assert yaml.safe_load(example)["calendars"] == ["primary"]
+    assert yaml.safe_load(base)["calendars"] == ["primary", "birthdays"]
 
 
 def test_base_scenario_shape():

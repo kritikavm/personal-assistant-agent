@@ -102,7 +102,7 @@ class TokenInfoSource(Protocol):
 
 
 class NoGoogleToken:
-    """Until M13 there is no Google token: the calendar is "not connected"."""
+    """No Google token: the calendar is "not connected" (used by tests and before `auth google`)."""
 
     def tokeninfo(self) -> dict[str, Any] | None:
         return None
@@ -112,6 +112,11 @@ class CalendarAccess(StrEnum):
     connected = "connected"
     not_connected = "not_connected"  # no token in the Keychain yet
     unverified = "unverified"  # token present but its scopes couldn't be read: not used this run
+    expired = "expired"  # Google refused the refresh token (revoked or expired): run `assistant auth google`
+
+
+class GoogleLoginExpired(Exception):
+    """The stored Google token was revoked or can't be refreshed."""
 
 
 class ScopeError(Exception):
@@ -136,10 +141,12 @@ def scopes_from_tokeninfo(info: dict[str, Any]) -> set[str] | None:
 def check_calendar_scope(source: TokenInfoSource) -> CalendarAccess:
     """Refuse (ScopeError) on any scope other than calendar.events.readonly (decision §4.1).
 
-    No token → not connected. A token whose scopes can't be read isn't used.
+    No token → not connected. A refused refresh token → expired. A token whose scopes can't be read isn't used.
     """
     try:
         info = source.tokeninfo()
+    except GoogleLoginExpired:
+        return CalendarAccess.expired
     except Exception:  # noqa: BLE001 - network or Keychain trouble: don't use the token this run
         return CalendarAccess.unverified
     if info is None:

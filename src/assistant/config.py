@@ -49,13 +49,16 @@ class PermissionIssue:
         return f"{self.path} is {self.mode:o}, expected {self.expected:o} (run: chmod {self.expected:o} '{self.path}')"
 
 
+IGNORED_FILES = {".DS_Store"}  # Finder's folder-view files: no user data, recreated at 644 whenever Finder opens a folder
+
+
 def permission_issues(data_dir: Path) -> list[PermissionIssue]:
     """Folders and files under `data/` that group or others can access."""
     if not data_dir.exists():
         return []
     issues = []
     for path in (data_dir, *sorted(data_dir.rglob("*"))):
-        if path.is_symlink():
+        if path.is_symlink() or path.name in IGNORED_FILES:
             continue
         mode = stat.S_IMODE(path.stat().st_mode)
         expected = DIR_MODE if path.is_dir() else FILE_MODE

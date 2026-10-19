@@ -5,6 +5,9 @@ description = "Local personal assistant agent: read-only Google Calendar, local 
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "claude-agent-sdk>=0.2.168",
+    "google-api-python-client>=2.201.0",
+    "google-auth-oauthlib>=1.5.0",
+    "keyring>=25.7.0",
     "pydantic>=2.14.0",
     "pyyaml>=6.0.3",
     "typer>=0.27.3",
