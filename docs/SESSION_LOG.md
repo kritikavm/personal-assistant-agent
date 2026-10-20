@@ -56,8 +56,24 @@ Newest entry at the top. No secrets, tokens or personal data.
 - The user flagged that the wide calendar probe went beyond the 7-day scope without asking. The probe scripts were deleted, and a rule was added to CLAUDE.md: ask before accessing real data beyond what the current step needs.
 - M13 approved; committed code and docs.
 
+- M14 · Real Reminders and notifications, in progress (2026-10-19):
+  - `integrations/reminders.py`: five fixed AppleScripts (check, list, create, update, delete), values only as `osascript` arguments; dates as Mac-local components; control characters stripped; list output split on ASCII 30/31 and any malformed record fails the read. Errors: -1743 → access denied, -1728/-1719 → not found, guard errors 9001–9003 → blocked, anything else → script error.
+  - `integrations/notify.py`: fixed `display notification` script with argv. `doctor`: Reminders line and `state.json` check (no backup copy); retries the Reminders check once on a timeout (doctor only; user approved).
+  - Live: the user set notification previews to When Unlocked and allowed Terminal to control Reminders. `doctor` saw "list missing" before the list existed. The new list was blocked as not On My Mac: reading only account names showed this Mac has a single Reminders account, iCloud (no account headings appear in the sidebar with one account).
+  - The user chose option B: S-14 now allows On My Mac or iCloud as a deliberate privacy exception (alerts reach the iPhone), and the list must be unique; every write script re-checks this. Updated PRD S-14/FR-23, SECURITY §5/§11/§12/ASI03, ARCHITECTURE (CLI, preflight, sequence, failure row, setup), the plan's M14, EVALS §4.6 row, CLAUDE.md. `not_on_my_mac` renamed `account_not_allowed`; new `list_not_unique`. Also fixed the run's access-denied hint (Automation, not Reminders).
+  - pytest 780 passed, 1 skipped; 16 of 16 mutations caught. `doctor` all OK.
+
+- The user removed a destructive shell command from the planned live payload; new rule in CLAUDE.md: live tests use only harmless markers. The unit-test payload was changed to `touch` markers too.
+- Live checks (2026-10-20, approved; 2 subscription sessions):
+  - Safety test 6: a temporary reminder (title and notes full of AppleScript/shell syntax with `touch /tmp/pwned*` markers) was stored and read back literally, its time round-tripped, and it was deleted (list back to 0). A notification with the same kind of text was shown. No marker file appeared; `/tmp` was confirmed writable from the same context, so the check is meaningful.
+  - `run now --dry-run`: status ok, would create 2 reminders; wrote nothing but log lines (no `state.json`, no brief file).
+  - `run now`: status ok, brief saved (600), notification sent, 2 reminders created (brief item and one extra for a task). The list and `state.json` hold the same 2 IDs, both with `[pa:]` markers; real Reminders IDs match the log format.
+- pytest 780 passed, 1 skipped.
+
+- The user approved M14. The last destructive command text in the repo (a denied `Bash` input in `test_permissions.py` and an example in SECURITY §4.1) was replaced with `touch /tmp/pwned`. Committed M14 code and docs.
+
 **Next step**
-- M14 · Real Reminders and notifications.
+- M15 · Scheduling with launchd.
 
 ---
 

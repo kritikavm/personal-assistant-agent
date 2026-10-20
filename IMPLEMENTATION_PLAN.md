@@ -245,18 +245,18 @@ This plan breaks Phase 1 into small milestones. Each one can be built and tested
 
 ### M14 · Real Reminders and notifications
 
-- **Goal:** write only to "Agent Reminders" (On My Mac), safely, through fixed AppleScript.
+- **Goal:** write only to "Agent Reminders" (one list, On My Mac or iCloud, S-14), safely, through fixed AppleScript.
 - **Built:**
-  - `integrations/reminders.py`: fixed scripts with `on run argv`, list name constant, preflight (access, list exists, On My Mac), create/update/delete by ID (S-4, S-14, S-18)
+  - `integrations/reminders.py`: fixed scripts with `on run argv`, list name constant, preflight (access, one list, allowed account), create/update/delete by ID (S-4, S-14, S-18)
   - `integrations/notify.py`: fixed `display notification` script, text as argument
   - `doctor`: Reminders access, list account
 - **Must pass:**
   - safety test 3: a write to any other list is blocked
   - safety test 6: a reminder and notification with AppleScript/shell syntax in the title are stored/shown literally, nothing else runs (uses a temporary test reminder in "Agent Reminders", deleted afterwards)
-  - preflight detects "list missing" and "not On My Mac" on the real system
+  - preflight detects "list missing" and a disallowed account on the real system (the disallowed-account check ran live while On My Mac was the only allowed account, before S-14 changed)
   - `run now --dry-run` on real data, then one real `run now`
 - **You do:**
-  - create the "Agent Reminders" list under **On My Mac** (not iCloud)
+  - create the "Agent Reminders" list (On My Mac or iCloud, S-14)
   - grant Reminders/Automation access when macOS asks
   - System Settings → Notifications → Show previews → **When Unlocked**
 - **Verify:** `uv run assistant doctor` · `uv run assistant run now --dry-run` · `uv run assistant run now`, then check the Reminders app

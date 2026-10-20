@@ -169,7 +169,7 @@ Three cases for each of the four core question types:
 |---|---|---|
 | Calendar outage | B | Run continues with tasks only; brief `data_gaps` says calendar data is missing; existing meeting and birthday reminders kept |
 | Reminders access denied / list missing | A | No Reminders writes; brief, file and notification still happen; reason in brief and `doctor` |
-| "Agent Reminders" not On My Mac | A | Same as above (S-14) |
+| "Agent Reminders" not in an allowed account | A | Same as above (S-14: On My Mac or iCloud only) |
 | Usage unavailable / exhausted | A (simulated SDK error) | AI step stops, run logged as failed, scheduled run shows the failure notification, no fallback |
 | Malformed AI output | A (scripted fake responses) | One retry with the validation errors, then the step fails, nothing written, log has field paths only |
 | Step limit reached | A (scripted) | Fails cleanly, nothing written |

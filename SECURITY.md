@@ -70,7 +70,7 @@ The calendar tool also clamps date ranges to today…+7 days and drops attendees
 Reminder titles, notes and notification text can contain text from calendar invites, tasks or the model. None of it is ever pasted into AppleScript source.
 
 - The AppleScript for each operation (create, update, delete, list check, notification) is a **fixed script** stored in the code. It reads its inputs from `on run argv`.
-- Plain code calls `osascript` with an argument list (`subprocess.run([...])`, never `shell=True`), passing the script and then each value as a separate argument. A value like `" & do shell script "rm -rf ~" & "` is then just a string in a reminder title.
+- Plain code calls `osascript` with an argument list (`subprocess.run([...])`, never `shell=True`), passing the script and then each value as a separate argument. A value like `" & do shell script "touch /tmp/pwned" & "` is then just a string in a reminder title.
 - The list name "Agent Reminders" is a constant in the fixed script, not an argument.
 - A safety test creates a reminder and a notification with a malicious title and checks that it is stored or shown literally and nothing else runs (§7).
 
@@ -83,7 +83,7 @@ Reminder titles, notes and notification text can contain text from calendar invi
 - **Claude login:** handled by Claude Code's own login. The project stores no Claude credentials.
 - **Gitignored:** `data/` (preferences, tasks, completed tasks, backups, state, briefs, logs, `secrets/`) and `.env`-style files. The repo ships only fake sample data in `examples/` (S-12).
 - **Secret scanning:** `gitleaks` runs on every commit and before every push (git pre-commit and pre-push hooks) and blocks the commit or push if it finds a secret (S-12).
-- **"Agent Reminders" stays on the Mac:** the list must be an **On My Mac** list, not an iCloud list, so reminder titles (event and task names) don't sync off the Mac. Every run checks which account the list belongs to before writing. If it isn't On My Mac, all reminder writes are skipped (same path as a missing list, FR-23), the brief is still written, and the reason is shown in the brief and in `doctor` (S-14).
+- **"Agent Reminders" account (S-14):** the list must be the only list with that name, in the **On My Mac** or **iCloud** account. iCloud is a deliberate exception chosen by me (2026-10-19) so alerts reach my iPhone. It means the assistant's reminder titles (event names, task text, birthdays) and their `[pa:]` markers sync to iCloud and my other devices. Every run checks the list before writing, and each write script checks again (one list, allowed account) before it touches anything. Any other account (Exchange, CalDAV, …) or a second list with the same name blocks all reminder writes (same path as a missing list, FR-23); the brief is still written and the reason is shown in the brief and in `doctor`. Writes stay limited to that one list.
 - **Lock-screen notifications:** the morning-brief notification shows only a neutral summary such as "Morning brief ready: 3 meetings, 2 tasks due". No event titles, task text or other details. Failure notifications name the failure type only (S-15).
 - **Sent to Claude:** only what a request needs (S-11):
   - event title, time, all-day flag, location and calendar name
@@ -164,7 +164,7 @@ Category names as listed in the OWASP GenAI Security Project's announcement of t
 |---|---|---|---|
 | ASI01 | Agent Goal Hijack | Untrusted-data rule and system prompt (§6), proposals only, plan validation, confirmation for task changes, prompt-injection eval | Mitigated |
 | ASI02 | Tool Misuse | Per-flow allowlist, deny-by-default hook, argument checks and date clamps, step limits, extras cap (§4) | Mitigated |
-| ASI03 | Identity & Privilege Abuse | Read-only OAuth scope + startup scope check (§2), billing check (§3), fixed Reminders list, Keychain token | Mitigated |
+| ASI03 | Identity & Privilege Abuse | Read-only OAuth scope + startup scope check (§2), billing check (§3), fixed Reminders list (one list, On My Mac or iCloud, checked by every write script, S-14), Keychain token | Mitigated |
 | ASI04 | Agentic Supply Chain Vulnerabilities | `uv.lock`, official packages, `pip-audit`, in-process tools only, `setting_sources=[]` (no external plugins or MCP servers) (§9) | Mitigated |
 | ASI05 | Unexpected Code Execution | No shell or code tools for the agent; AppleScript via fixed scripts with arguments (§4.1) | Mitigated |
 | ASI06 | Memory & Context Poisoning | Stored files are untrusted and schema-validated on load; no long-term AI memory (§6) | Mitigated |
@@ -178,6 +178,7 @@ Category names as listed in the OWASP GenAI Security Project's announcement of t
 - **Single user, single Mac.** The design doesn't cover multi-user access or protection against someone with access to my unlocked Mac account. Local files in `data/` are protected only by macOS file permissions (`700`/`600`).
 - **Data sent to Claude** is handled under Anthropic's terms for my subscription. The project doesn't control retention there.
 - **AppleScript access** is granted per app by macOS. Our code limits itself to "Agent Reminders", but macOS doesn't enforce a per-list boundary. The list restriction is enforced by our code and tests.
+- **Reminder titles in iCloud (by choice):** "Agent Reminders" is in iCloud so alerts reach my iPhone (S-14). Its reminder titles (event names, task text, birthdays) are stored in iCloud under Apple's terms and show on my other devices. Accepted as a deliberate exception; moving the list to On My Mac undoes it with no code change.
 - **Reminder alerts on the lock screen:** the alerts that the Reminders app itself shows include the reminder title. Hiding these on a locked screen is a macOS setting, not something this project controls. Accepted as a known limitation; setup step 5 (ARCHITECTURE §11) tells me to set Notifications → Show previews → **When Unlocked**.
 - **Google app status:** the OAuth app stays in *Testing*, unverified, with me as the only test user, for personal use only (D4). It is not meant to be shared with other users. In *Testing*, Google ends the login 7 days after sign-in, so I sign in again about once a week; `doctor` warns in the last 2 days. Missing that only means the calendar is unavailable until I sign in again (FR-22).
 - **Model quality:** guardrails limit what the model can *do*, not whether its brief or answers are correct. Evals cover accuracy (PRD §10.2–10.4).
@@ -191,7 +192,7 @@ All seven gaps from the first review are now applied to PRD.md and ARCHITECTURE.
 |---|---|---|
 | 1 | Prompt injection not a requirement | S-17, ARCHITECTURE §7, safety test 10 (§6, §7) |
 | 2 | Safety test list thin | Tests 6–10 added to PRD §10.5 (§7) |
-| 3 | iCloud sync of "Agent Reminders" | Must be an On My Mac list; otherwise reminder writes are skipped and the reason is shown in the brief and `doctor` (S-14, FR-23) |
+| 3 | iCloud sync of "Agent Reminders" | Originally On My Mac only. Changed 2026-10-19: On My Mac or iCloud (deliberate exception so alerts reach the iPhone), one list with that name only; otherwise reminder writes are skipped and the reason is shown in the brief and `doctor` (S-14, FR-23) |
 | 4 | Lock-screen notifications | Neutral summary only; Reminders' own alerts accepted as a limitation, with a setup step for *When Unlocked* (S-15) |
 | 5 | Log contents and retention | IDs, statuses and errors only; logs and briefs kept 30 days (S-13, FR-26) |
 | 6 | OAuth client file location | `data/secrets/`, `600`, gitignored (S-10) |
