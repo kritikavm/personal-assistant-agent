@@ -485,7 +485,7 @@ def test_failure_cases_map_every_evals_row_and_their_tests_exist(capsys):
     assert [c["kind"] for c in cases] == [
         "calendar outage",
         "Reminders access denied / list missing",
-        '"Agent Reminders" not On My Mac',
+        '"Agent Reminders" not in an allowed account',
         "usage unavailable / exhausted",
         "malformed AI output",
         "step limit reached",

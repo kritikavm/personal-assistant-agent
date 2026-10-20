@@ -172,7 +172,11 @@ def data_dir(tmp_path, monkeypatch):
     return path
 
 
-def test_doctor_ok(data_dir):
+def test_doctor_ok(data_dir, monkeypatch):
+    from assistant import cli
+    from tests.fakes import FakeReminders
+
+    monkeypatch.setattr(cli, "reminders_client", FakeReminders)
     config.ensure_data_dir(data_dir)
     shutil.copy(EXAMPLES / "preferences.yaml", data_dir / "preferences.yaml")
     os.chmod(data_dir / "preferences.yaml", 0o600)
@@ -180,6 +184,7 @@ def test_doctor_ok(data_dir):
     assert result.exit_code == 0, result.output
     assert "OK    preferences: valid" in result.output
     assert "OK    location:" in result.output
+    assert 'OK    Reminders: "Agent Reminders" found in an allowed account (iCloud or On My Mac; S-14) (0 item(s))' in result.output
     warnings = [line for line in result.output.splitlines() if line.startswith("WARN")]
     assert warnings == ["WARN  Google Calendar: not connected (runs continue with tasks only); run `assistant auth google`"]
 

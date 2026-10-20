@@ -59,7 +59,7 @@ def test_denials_are_logged_without_arguments(tmp_path):
     config.ensure_data_dir(tmp_path)
     with RunLog(tmp_path, "ask", TZ) as log:
         g = gate("ask", log)
-        g.decide("Bash", {"command": "rm -rf ~ CANARY-perm1"})
+        g.decide("Bash", {"command": "touch /tmp/pwned CANARY-perm1"})
         g.decide(qualified("get_tasks"), {})
     lines = [json.loads(line) for f in (tmp_path / "logs").iterdir() for line in f.read_text().splitlines()]
     denied = [line for line in lines if line["event"] == "tool_denied"]

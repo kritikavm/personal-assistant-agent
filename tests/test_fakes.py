@@ -74,14 +74,6 @@ def test_instances_satisfy_protocols():
     assert isinstance(FakeNotifier(), Notifier) and isinstance(MacNotifier(), Notifier)
 
 
-def test_real_reminders_and_notifier_make_no_calls_yet():
-    for call in (lambda c: c.check_access(), lambda c: c.list_items(), lambda c: c.delete("x")):
-        with pytest.raises(NotImplementedError, match="M14"):
-            call(AppleRemindersClient())
-    with pytest.raises(NotImplementedError, match="M14"):
-        MacNotifier().notify("t", "m")
-
-
 def test_product_code_never_imports_fakes():
     for path in (ROOT / "src").rglob("*.py"):
         text = path.read_text()
@@ -182,7 +174,7 @@ def test_reminders_fake_records_writes():
     assert sanitize({"reminder_id": rid}) == {"reminder_id": rid}  # ID format matches the log allowlist
 
 
-@pytest.mark.parametrize("access", [ReminderAccess.access_denied, ReminderAccess.list_missing, ReminderAccess.not_on_my_mac])
+@pytest.mark.parametrize("access", [ReminderAccess.access_denied, ReminderAccess.list_missing, ReminderAccess.account_not_allowed])
 def test_reminders_fake_blocked_writes_nothing(access):
     r = FakeReminders(access=access, items=[mine()])
     assert r.check_access() is access

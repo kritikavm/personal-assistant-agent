@@ -475,7 +475,7 @@ def test_failed_write_stops_and_state_matches_the_list():
 
 def test_blocked_list_writes_nothing_and_state_is_unchanged():
     s, result, tasks, now = scenario_inputs("base")
-    state, client = State(), FakeReminders(access=ReminderAccess.not_on_my_mac)
+    state, client = State(), FakeReminders(access=ReminderAccess.account_not_allowed)
     _, _, res = run_once(state, client, result.events, tasks, now)
     assert res.error == "RemindersBlockedError" and res.created == 0
     assert state.reminders == {} and client.writes() == []
@@ -701,9 +701,14 @@ def test_cli_rebuild_waits_for_no_other_run(cli_env):
     assert not (data_dir / STATE_FILE).exists()
 
 
-def test_cli_rebuild_with_real_client_says_not_built_yet(cli_env, monkeypatch):
+def test_cli_rebuild_when_osascript_fails_changes_nothing(cli_env, monkeypatch):
+    import subprocess
+
     from assistant.integrations.reminders import AppleRemindersClient
 
-    monkeypatch.setattr(cli, "reminders_client", AppleRemindersClient)
+    def failing(args):
+        return subprocess.CompletedProcess(args, 1, "", "execution error: something odd (-2700)")
+
+    monkeypatch.setattr(cli, "reminders_client", lambda: AppleRemindersClient(failing))
     out = rebuild("y\n")
-    assert out.exit_code == 1 and "M14" in out.output
+    assert out.exit_code == 1 and "couldn't read" in out.output and "Nothing was changed" in out.output

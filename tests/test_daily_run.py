@@ -322,7 +322,7 @@ def test_skipped_birthdays_calendar_is_a_gap_but_not_partial(tmp_path):
     assert r.status is RunStatus.ok and "birthdays" in r.brief.data_gaps[0]
 
 
-@pytest.mark.parametrize("access", [ReminderAccess.access_denied, ReminderAccess.list_missing, ReminderAccess.not_on_my_mac])
+@pytest.mark.parametrize("access", [ReminderAccess.access_denied, ReminderAccess.list_missing, ReminderAccess.account_not_allowed])
 def test_reminders_blocked_still_writes_brief_and_notification(tmp_path, access):
     w = World(tmp_path, access=access)
     r = w.run()
@@ -336,7 +336,7 @@ def test_reminders_blocked_with_state_saves_only_last_runs(tmp_path):
     w = World(tmp_path)
     w.run()
     before = load_state(w.data).reminders
-    w.rem.access = ReminderAccess.not_on_my_mac
+    w.rem.access = ReminderAccess.account_not_allowed
     r = w.run(now=w.sc.now + timedelta(hours=1))
     state = load_state(w.data)
     assert r.status is RunStatus.partial and state.reminders == before and state.last_runs["manual"].status is RunStatus.partial

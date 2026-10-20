@@ -107,9 +107,10 @@ CALENDAR_GAPS = {
 }
 
 _BLOCKED = {
-    ReminderAccess.access_denied.value: "access to Reminders is denied (System Settings → Privacy & Security → Reminders)",
-    ReminderAccess.list_missing.value: f'the "{AGENT_LIST}" list doesn\'t exist; create it under On My Mac',
-    ReminderAccess.not_on_my_mac.value: f'the "{AGENT_LIST}" list isn\'t an On My Mac list; recreate it under On My Mac',
+    ReminderAccess.access_denied.value: "access to Reminders is denied (System Settings → Privacy & Security → Automation)",
+    ReminderAccess.list_missing.value: f'the "{AGENT_LIST}" list doesn\'t exist; create it in Reminders',
+    ReminderAccess.account_not_allowed.value: f'the "{AGENT_LIST}" list isn\'t in iCloud or On My Mac; recreate it there',
+    ReminderAccess.list_not_unique.value: f'more than one list is named "{AGENT_LIST}"; keep only one',
     "reminders_unavailable": "Reminders couldn't be checked",
     StateProblem.invalid.value: "state.json is invalid (a copy is in backups/); run `assistant state rebuild`",
     StateProblem.missing.value: f'state.json is missing but "{AGENT_LIST}" holds the assistant\'s reminders; run `assistant state rebuild`',

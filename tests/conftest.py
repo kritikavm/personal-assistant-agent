@@ -34,3 +34,15 @@ def keychain(monkeypatch):
     monkeypatch.setattr(google_auth, "fetch_tokeninfo", no_network)
     monkeypatch.setattr(google_auth, "run_login", no_network)
     return store
+
+
+@pytest.fixture(autouse=True)
+def no_osascript(monkeypatch):
+    """No test runs osascript against the real Reminders app or Notification Center."""
+    from assistant.integrations import notify, reminders
+
+    def blocked(args):
+        raise AssertionError("tests must not run osascript")
+
+    monkeypatch.setattr(reminders, "run_osascript", blocked)
+    monkeypatch.setattr(notify, "run_osascript", blocked)

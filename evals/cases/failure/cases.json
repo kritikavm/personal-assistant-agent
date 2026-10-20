@@ -3,7 +3,7 @@
   "cases": [
     {"id": 1, "layer": "B", "kind": "calendar outage", "fixture": "calendar_outage", "seed_from": "base"},
     {"id": 2, "layer": "A", "kind": "Reminders access denied / list missing", "tests": ["tests/test_daily_run.py::test_reminders_blocked_still_writes_brief_and_notification", "tests/test_daily_run.py::test_reminders_blocked_with_state_saves_only_last_runs", "tests/test_daily_run.py::test_check_access_crash_blocks_writes"]},
-    {"id": 3, "layer": "A", "kind": "\"Agent Reminders\" not On My Mac", "tests": ["tests/test_daily_run.py::test_reminders_blocked_still_writes_brief_and_notification[not_on_my_mac]"]},
+    {"id": 3, "layer": "A", "kind": "\"Agent Reminders\" not in an allowed account", "tests": ["tests/test_daily_run.py::test_reminders_blocked_still_writes_brief_and_notification[account_not_allowed]"]},
     {"id": 4, "layer": "A", "kind": "usage unavailable / exhausted", "tests": ["tests/test_daily_run.py::test_ai_failure_writes_nothing", "tests/test_daily_run.py::test_cli_scheduled_failure_notifies_with_the_type_only", "tests/test_runner.py::test_limit_hit_or_overage_stops_at_once"]},
     {"id": 5, "layer": "A", "kind": "malformed AI output", "tests": ["tests/test_daily_run.py::test_malformed_output_one_retry_then_fails_with_field_paths_only", "tests/test_daily_run.py::test_invalid_then_fixed_is_accepted"]},
     {"id": 6, "layer": "A", "kind": "step limit reached", "tests": ["tests/test_daily_run.py::test_ai_failure_writes_nothing"]}

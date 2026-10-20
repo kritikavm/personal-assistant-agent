@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import subprocess
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
@@ -34,9 +35,16 @@ from assistant.guard import (
 from assistant.integrations import google_auth
 from assistant.integrations.google_calendar import CalendarClient, GoogleCalendarClient, GoogleEventsPages
 from assistant.integrations.notify import MacNotifier, Notifier
-from assistant.integrations.reminders import AGENT_LIST, AppleRemindersClient, ReminderAccess, RemindersClient
+from assistant.integrations.reminders import (
+    AGENT_LIST,
+    AppleRemindersClient,
+    ReminderAccess,
+    RemindersBlockedError,
+    RemindersClient,
+    RemindersScriptError,
+)
 from assistant.logging_setup import BRIEFS_DIR, RunLog
-from assistant.state import STATE_FILE, plan_rebuild, write_rebuilt
+from assistant.state import STATE_FILE, check_state, plan_rebuild, write_rebuilt
 from assistant.schemas import CalendarResult, Preferences, Priority, Task, TaskStatus
 from assistant.tasks_store import TaskStore, TaskStoreError, parse_deadline
 
@@ -72,7 +80,7 @@ def google_tokens() -> TokenInfoSource:
 
 @app.command()
 def doctor() -> None:
-    """Check setup: billing, data folder location and permissions, preferences, calendar.
+    """Check setup: billing, data folder location and permissions, preferences, calendar, Reminders, state.
 
     Refuses at once if a billing variable is set. Exits with 1 if anything is
     broken. Warnings don't change the exit code.
@@ -135,7 +143,47 @@ def doctor() -> None:
         else:
             typer.echo("WARN  Google Calendar: token scopes couldn't be checked; the calendar won't be used")
 
+    for line in _reminders_lines(data_dir):
+        typer.echo(line)
+
     raise typer.Exit(code=1 if errors else 0)
+
+
+_ACCESS_FIX = {
+    ReminderAccess.access_denied: "no permission to use Reminders; allow it in System Settings → Privacy & Security → Automation",
+    ReminderAccess.list_missing: f'no list named "{AGENT_LIST}"; create it in Reminders (iCloud or On My Mac)',
+    ReminderAccess.account_not_allowed: f'"{AGENT_LIST}" is in an account other than iCloud or On My Mac (S-14); recreate it in one of those',
+    ReminderAccess.list_not_unique: f'more than one list is named "{AGENT_LIST}"; delete the extra ones so only one remains',
+}
+
+
+def _retry_timeout_once(call):
+    """`doctor` only: a timeout is often macOS's permission popup still waiting for an answer, so try once more.
+
+    Runs don't retry: a scheduled run has nobody to answer the popup (ARCHITECTURE §8).
+    """
+    try:
+        return call()
+    except subprocess.TimeoutExpired:
+        typer.echo("      Reminders didn't answer in time; if macOS is asking for permission, answer it. Trying once more...")
+        return call()
+
+
+def _reminders_lines(data_dir: Path) -> list[str]:
+    """Reminders preflight and state.json, as a run would see them (FR-23, FR-23a, S-14). Writes nothing."""
+    client = reminders_client()
+    try:
+        access = _retry_timeout_once(client.check_access)
+        items = _retry_timeout_once(client.list_items) if access is ReminderAccess.ok else None
+    except Exception as e:  # noqa: BLE001 - osascript trouble: report it, never guess
+        return [f"WARN  Reminders: couldn't check ({e.__class__.__name__}); runs skip reminder writes until this works"]
+    if access is not ReminderAccess.ok:
+        return [f"WARN  Reminders: writes are blocked: {_ACCESS_FIX[access]}"]
+    lines = [f'OK    Reminders: "{AGENT_LIST}" found in an allowed account (iCloud or On My Mac; S-14) ({len(items)} item(s))']
+    check = check_state(data_dir, items, keep_copy=False)
+    if check.state is None:
+        lines.append(f"WARN  state.json: {check.problem.value}; reminder writes are blocked until you run `assistant state rebuild`")
+    return lines
 
 
 def _login_expiry_line(tz) -> str:
@@ -337,9 +385,9 @@ def state_rebuild() -> None:
         except RunLockedError as e:
             log.error(e)
             raise _fail([str(e)]) from None
-        except NotImplementedError as e:
+        except (RemindersBlockedError, RemindersScriptError, OSError, subprocess.TimeoutExpired) as e:
             log.error(e)
-            raise _fail([str(e)]) from None
+            raise _fail([f'couldn\'t read "{AGENT_LIST}" ({e.__class__.__name__}). Nothing was changed.']) from None
     if saved:
         typer.echo(f"Previous {STATE_FILE} saved as backups/{saved.name}.")
     typer.echo(f"Rebuilt {STATE_FILE} with {total} reminder(s). Run history starts empty.")
