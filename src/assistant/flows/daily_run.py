@@ -363,9 +363,15 @@ async def daily_run(
     notifier: Notifier,
     log: RunLog | None = None,
     session: Session = run_session,
+    clock: Callable[[], datetime] | None = None,
 ) -> RunResult:
-    """One daily run. Raises AgentFailure if the AI step fails; then nothing but log lines was written."""
+    """One daily run. Raises AgentFailure if the AI step fails; then nothing but log lines was written.
+
+    `clock` is the real time when the Reminders writes happen (default: the system clock); `now` is
+    fixed at the start of the run and used for planning.
+    """
     tz = prefs.tz
+    clock = clock or (lambda: datetime.now(tz))
     today = now.astimezone(tz).date()
     if trigger == "scheduled" and not dry_run and already_ran_today(data_dir, today):
         if log:
@@ -417,7 +423,7 @@ async def daily_run(
     # 1. Reminders (only if not blocked), 2. state.json, 3. brief file, 4. notification, 5. log.
     applied = None
     if pre.blocked is None:
-        applied = apply_diff(diff, reminders, pre.state, log)
+        applied = apply_diff(diff, reminders, pre.state, log, prefs=prefs, clock=clock)
         if log:
             log.event("reminders_applied", created=applied.created, updated=applied.updated, deleted=applied.deleted, kept=len(diff.kept), forgotten=applied.forgotten, missing=applied.missing)
     result.applied = applied

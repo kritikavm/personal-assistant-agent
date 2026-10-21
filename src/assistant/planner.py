@@ -11,8 +11,8 @@ per local day, so DST days come out right.
 """
 
 from collections import Counter
-from collections.abc import Iterable
-from dataclasses import dataclass, field
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta, timezone
 from enum import StrEnum
 from zoneinfo import ZoneInfo
@@ -439,14 +439,46 @@ def _record(p: PlannedReminder, reminder_id: str) -> ReminderRecord:
     )
 
 
-def apply_diff(diff: Diff, client: RemindersClient, state: State, log: RunLog | None = None) -> ApplyResult:
+BRIEF_LEAD = timedelta(minutes=1)  # a brief item is always written at least this far ahead, so its alert fires
+
+
+def brief_not_past(p: PlannedReminder, now: datetime, prefs: Preferences) -> PlannedReminder:
+    """A brief item due less than BRIEF_LEAD after `now` (the moment it's written) moves to the first
+    whole minute at least BRIEF_LEAD away, then out of quiet hours. A slow run (e.g. one that sleeps
+    between dark wakes) would otherwise write it already past, and Reminders would never alert.
+    Other reminders are returned unchanged.
+    """
+    if p.source_type is not SourceType.brief or p.fire_at >= now + BRIEF_LEAD:
+        return p
+    tz = prefs.tz
+    earliest = (now + BRIEF_LEAD).astimezone(tz)
+    at = whole_minute(earliest)
+    if at < earliest:  # round up, never down
+        at = shift(at, timedelta(minutes=1), tz)
+    at, quiet = apply_quiet_hours(at, None, prefs)
+    return replace(p, fire_at=at, quiet=quiet)
+
+
+def apply_diff(
+    diff: Diff,
+    client: RemindersClient,
+    state: State,
+    log: RunLog | None = None,
+    *,
+    prefs: Preferences | None = None,
+    clock: Callable[[], datetime] | None = None,
+) -> ApplyResult:
     """Make the Reminders writes and update `state` to match what actually happened.
 
     Updates and deletes only ever use reminder IDs from `state` (FR-16). If a
     write fails, the rest are skipped and `state` still describes the list
-    correctly, so the caller can save it.
+    correctly, so the caller can save it. With `prefs` and `clock`, each brief
+    item's time is checked against the clock right before it's written (`brief_not_past`).
     """
     result = ApplyResult()
+
+    def timed(p: PlannedReminder) -> PlannedReminder:
+        return brief_not_past(p, clock(), prefs) if prefs is not None and clock is not None else p
 
     def note(name: str, key: str, reminder_id: str, kind: ReminderKind, source_type: SourceType) -> None:
         if log:
@@ -466,6 +498,7 @@ def apply_diff(diff: Diff, client: RemindersClient, state: State, log: RunLog | 
             result.deleted += 1
             note("reminder_deleted", key, record.reminder_id, record.kind, record.source_type)
         for old_key, p in diff.update:
+            p = timed(p)
             record = state.reminders[old_key]
             reminder_id = record.reminder_id
             try:
@@ -478,6 +511,7 @@ def apply_diff(diff: Diff, client: RemindersClient, state: State, log: RunLog | 
             result.updated += 1
             note("reminder_updated", p.key, reminder_id, p.kind, p.source_type)
         for p in diff.create:
+            p = timed(p)
             reminder_id = client.create(p.title, p.fire_at, p.notes)
             state.reminders[p.key] = _record(p, reminder_id)
             result.created += 1

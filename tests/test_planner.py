@@ -759,3 +759,44 @@ def test_future_brief_item_is_not_deleted_early():
     client.calls.clear()
     run_once(state, client, result.events, tasks, brief.fire_at - timedelta(minutes=1))
     assert ("delete", brief.reminder_id) not in client.writes()
+
+
+# --- brief_not_past (M15) -------------------------------------------------------------------------------------
+
+
+def test_brief_not_past_moves_only_late_brief_items():
+    from assistant.planner import brief_not_past
+
+    s, result, tasks, now, state, client, plan, _ = base_run()
+    brief = next(p for p in plan.reminders if p.source_type is SourceType.brief)
+    meeting = next(p for p in plan.reminders if p.source_type is SourceType.meeting)
+    assert brief_not_past(brief, brief.fire_at - timedelta(minutes=5), P) is brief
+    assert brief_not_past(brief, brief.fire_at - timedelta(minutes=1), P) is brief  # exactly 1 minute ahead is fine
+    late = brief.fire_at + timedelta(minutes=41, seconds=30)
+    moved = brief_not_past(brief, late, P)
+    assert moved.fire_at - late >= timedelta(minutes=1) and moved.fire_at - late < timedelta(minutes=2)
+    assert moved.key != brief.key and moved.title == brief.title and moved.notes.endswith(f"{moved.key}]")
+    assert brief_not_past(meeting, meeting.fire_at + timedelta(hours=1), P) is meeting  # others never move
+
+
+def test_brief_not_past_respects_quiet_hours():
+    from assistant.planner import brief_not_past
+
+    s, result, tasks, now, state, client, plan, _ = base_run()
+    brief = next(p for p in plan.reminders if p.source_type is SourceType.brief)
+    late_night = at(2026, 10, 28, 21, 59) + timedelta(seconds=30)  # quiet hours start at 22:00 in the example preferences
+    moved = brief_not_past(brief, late_night, P)
+    assert moved.fire_at == at(2026, 10, 29, 7)  # to the end of quiet hours, never inside them
+
+
+def test_apply_diff_uses_the_clock_for_brief_items():
+    s, result, tasks, now = scenario_inputs("base")
+    state, client = State(), FakeReminders()
+    plan = build_plan(P, result.events, tasks, now, [])
+    diff = reconcile(plan.reminders, state, now)
+    written_at = now + timedelta(minutes=30)
+    apply_diff(diff, client, state, prefs=P, clock=lambda: written_at)
+    briefs = [r for r in state.reminders.values() if r.source_type is SourceType.brief]
+    assert len(briefs) == 1 and briefs[0].fire_at >= written_at + timedelta(minutes=1)
+    others = {k for k, r in state.reminders.items() if r.source_type is not SourceType.brief}
+    assert others == {p.key for p in plan.reminders if p.source_type is not SourceType.brief}  # untouched

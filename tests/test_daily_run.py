@@ -50,7 +50,7 @@ class World:
         client.today = now.astimezone(self.sc.preferences.tz).date()  # the window follows the run's own date
         return client
 
-    def run(self, claude=None, *, dry_run=False, trigger="manual", calendar=True, log=None, now=None):
+    def run(self, claude=None, *, dry_run=False, trigger="manual", calendar=True, log=None, now=None, clock=None):
         now = now or self.sc.now
         return asyncio.run(
             D.daily_run(
@@ -64,6 +64,7 @@ class World:
                 notifier=self.note,
                 log=log,
                 session=claude or Claude(PLAN),
+                clock=clock or (lambda: now),  # fixtures are dated; never the real clock
             )
         )
 
@@ -533,3 +534,27 @@ def test_brief_files_are_600_in_a_700_folder(cli_world, monkeypatch):
     assert all(oct(p.stat().st_mode & 0o777) == "0o600" for p in folder.iterdir())
     assert config.permission_issues(cli_world.data) == []
     assert os.listdir(folder) == ["2026-10-28.md"]
+
+
+# --- The brief item is never written in the past (M15) ------------------------------------------------------
+
+
+def test_slow_run_moves_the_brief_item_after_the_write(tmp_path):
+    # The run starts at 08:00 but its writes happen at 08:42 (e.g. a scheduled run spread over dark wakes).
+    w = World(tmp_path)
+    written_at = w.sc.now + timedelta(minutes=42)
+    w.run(clock=lambda: written_at)
+    (brief,) = [c for c in w.rem.writes() if c[0] == "create" and "Morning brief ready" in c[2]]
+    assert brief[3] >= written_at + timedelta(minutes=1)
+    assert brief[3] == written_at + timedelta(minutes=1) and brief[3].second == 0  # 08:42:00 → 08:43
+    state = load_state(w.data)
+    (key,) = [k for k, r in state.reminders.items() if r.source_type.value == "brief"]
+    assert key.endswith(brief[3].isoformat()) and brief[4].endswith(f"{key}]")  # state key and marker match the new time
+
+
+def test_on_time_run_keeps_the_brief_time(tmp_path):
+    w = World(tmp_path)
+    w.run()
+    (brief,) = [c for c in w.rem.writes() if c[0] == "create" and "Morning brief ready" in c[2]]
+    assert brief[3] >= w.sc.now + timedelta(minutes=1)
+    assert brief[3] - w.sc.now <= timedelta(minutes=2)
