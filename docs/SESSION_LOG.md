@@ -72,8 +72,18 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 - The user approved M14. The last destructive command text in the repo (a denied `Bash` input in `test_permissions.py` and an example in SECURITY §4.1) was replaced with `touch /tmp/pwned`. Committed M14 code and docs.
 
+- M15 · Scheduling with launchd, code built on fakes (2026-10-20):
+  - `launchd/com.assistant.daily.plist.template` and `schedule.py`: the job runs the project's `.venv/bin/assistant run scheduled` at `morning_brief.time`, fixed PATH and no other environment, `Umask` 077, stdout to `/dev/null` (the brief is saved in `briefs/`), stderr to `data/logs/launchd.err`, `RunAtLoad` false. `schedule install` writes the plist (644) to ~/Library/LaunchAgents and reloads it (`bootout` + `bootstrap`); `schedule uninstall` unloads and deletes it.
+  - `doctor`: schedule line (not installed / time or program differs / not loaded / OK). `run scheduled` once a day and the failure notification were already built in M10.
+  - Tests never run launchctl or touch the real LaunchAgents folder (autouse fakes). pytest 794 passed, 1 skipped; 10 of 10 mutations caught.
+
+- Live (2026-10-20): the user ran `schedule install` (`doctor` all OK) and a kickstart under launchd (1 session, approved; the user answered the macOS prompts). The run ended `ok`: calendar read through the Keychain token, Reminders preflight ok, plan, 1 created and 1 updated reminder, brief, notification; `last_runs.scheduled` recorded. A second kickstart logged `already_ran` and ended in 0.3 s with no Claude session.
+- Fixed: launchd created `data/logs/launchd.err` as 644 (it opens the file before applying `Umask`); `schedule install` now creates it as 600 first. The existing file was set to 600.
+- The user decided each run deletes its own past brief items (tracked in `state.json` only), so "Agent Reminders" doesn't collect one per day. Reconcile change, three new tests, two planner tests updated; both mutations of the condition caught. ARCHITECTURE §6.1 updated. pytest 798 passed, 1 skipped.
+- While checking those mutations, my restore step (`git checkout` on `planner.py`) also discarded the uncommitted change; it was re-applied at once and the suite rerun.
+
 **Next step**
-- M15 · Scheduling with launchd.
+- Step 4: catch-up after sleep over the 08:00 brief time; then the user's review of M15.
 
 ---
 

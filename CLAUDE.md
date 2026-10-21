@@ -26,6 +26,7 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - Stop and wait for review after each step.
 - **Ask before accessing any of the user's real data (calendar, tasks, Reminders, Keychain) beyond what the current step needs**, including wider date ranges or extra calendars for diagnostics.
 - **Live tests use only harmless markers** (e.g. `touch /tmp/pwned`, `$(touch /tmp/pwned2)`). Never put anything that deletes or modifies real files in a live test payload, even as text that shouldn't run.
+- **Breakage (mutation) checks:** commit or stash current changes first, and restore from that copy. Never run `git checkout` (or `git restore`) on files with uncommitted work.
 - Ask when anything is unclear or conflicts with the docs. If a doc seems wrong, list the issue rather than silently changing it.
 - PRD.md wins over the other docs when they disagree.
 - **"Wrap up"** → add a SESSION_LOG entry for the session and update the Status section below. Also update both after each completed milestone.

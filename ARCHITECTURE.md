@@ -191,7 +191,7 @@ The current time is passed in the system prompt, not via a tool.
    - same key with a changed title → update
    - a deleted and a created reminder for the same item and kind are paired into one update, so a moved event or deadline moves its reminder (FR-15)
    - key no longer planned and still in the future (event moved or cancelled, task done) → delete
-   - past reminders → leave alone in Reminders and drop from `state.json`
+   - past reminders → leave alone in Reminders and drop from `state.json`; except a past **brief item** the run created and tracks in `state.json`, which is deleted from "Agent Reminders" so old brief items don't pile up (user decision, M15). Nothing outside `state.json` is ever deleted
    - if calendar data is unavailable this run, existing `meeting` and `birthday` reminders are kept, not deleted (FR-22); if `tasks.json` can't be read, existing `task` reminders are kept the same way
 6. **Write.** With `--dry-run`, this step only prints the brief and the diff and writes log lines (the run's `run_start` is marked `dry_run`); the 30-day cleanup and the invalid-state backup copy are skipped too (FR-13). Otherwise:
    - Reminders changes, if not blocked. A reminder I deleted by hand is recreated if it needs an update and just dropped from state if it needs deleting. If a write fails, the rest are skipped and `state.json` records only what was written.
