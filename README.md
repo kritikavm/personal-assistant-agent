@@ -131,9 +131,9 @@ Prompts change as failures are fixed, so each result belongs to a prompt version
 |---|---|---|---|---|
 | Task capture (36) | category and deadline ≥ 90%, priority ≥ 80% | 34/35 (one priority miss, then fixed) | 5/5: the fixed case, a new case for the "other" category rule, 3 edge cases | partly rerun |
 | Extra reminders (8) | ≥ 7/8 | 7/8 | 2/3: the miss is the same reasonable one as before (the task already had its default reminders) | partly rerun |
-| Morning brief (6) | 0 invented items in 6/6; text checklist ≥ 5/6 | exact checks 6/6, checklist 5/6 | exact checks 6/6, 0 invented; checklist for 4 cases still to be marked | current |
+| Morning brief (6) | 0 invented items in 6/6; text checklist ≥ 5/6 | exact checks 6/6, checklist 5/6 | exact checks 6/6, 0 invented, text checklist 6/6 | current |
 | Repeat runs (1, two runs) | 0 duplicate reminders | 0 duplicates | not rerun since the prompt fix | rerun pending |
-| Q&A (12) | 12/12 correct with citations | 12/12 (after two check-bug fixes and a prompt fix) | 4/4 on the polished prompt (the cases it targeted) | partly rerun |
+| Q&A (12) | 12/12 correct with citations | 12/12 (after two check-bug fixes and a prompt fix) | 4/4 on the polished prompt (the cases it targeted), exact checks and text checklist | partly rerun |
 | Prompt injection (7, incl. one I wrote) | every case, every run | 7/7 | 7/7 | current |
 | Failure handling (6) | every case, every run | 6/6 | 6/6 | current |
 

@@ -12,7 +12,7 @@ Newest entry at the top. No secrets, tokens or personal data.
 - P2: personal timing and setup details trimmed from the session log.
 - Docs added: SECURITY §1.1 permission table by flow; `docs/example-run.md` (a real base-fixture run: tool calls, proposal, validation, writes); `docs/demo.md` (2-minute case study, fixtures only); `docs/validation.md` (7-day live plan); generated status table in EVALS §7.0 and the README.
 - Eval runner: `--cases`, per-case `fixture` for capture, `--summary` (status table from `evals/results/`), tool-call order recorded in daily-set results, fixture clock pinned. New fixture `categories_other` and capture case 36; the untested M10 "other" capture rule recorded in EVALS §7.2. pytest 809 passed, 1 skipped.
-- Final eval check (16 sessions, approved): capture 5/5 (incl. case 36), extras 2/3 (case 2 the same reasonable miss as before), brief 4/4 exact (all 6 brief cases now on the current prompt), Q&A 4/4 exact on the polished prompt. Checklist marks for brief 1, 2, 3, 6 and Q&A 1, 4, 5, 6 are the user's, pending. Repeat set not rerun (rerun pending in M16).
+- Final eval check (16 sessions, approved): capture 5/5 (incl. case 36), extras 2/3 (case 2 the same reasonable miss as before), brief 4/4 exact (all 6 brief cases now on the current prompt), Q&A 4/4 exact on the polished prompt. The user marked brief 1, 2, 3, 6 and Q&A 1, 4, 5, 6: all pass the full checklist. Personal-setup details (old folder path, iCloud-only detail, run times) were trimmed from CLAUDE.md and ARCHITECTURE too. Repeat set not rerun (rerun pending in M16).
 
 ---
 
