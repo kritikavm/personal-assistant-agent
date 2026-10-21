@@ -378,14 +378,19 @@ def reconcile(
       `unavailable` this run (calendar outage keeps meeting and birthday ones, FR-22)
     - a deleted and a created reminder for the same item and kind are paired into
       one update, so a moved event or deadline moves its reminder (FR-15)
-    - past reminders are never changed; they're dropped from state
+    - past reminders are never changed; they're dropped from state. Exception: a past brief item
+      (`source_type` brief) we created and track is deleted, so "Agent Reminders" doesn't collect one
+      old brief item per day. Only keys in state are ever deleted.
     """
     diff = Diff()
     by_key = {p.key: p for p in planned}
     removed: list[str] = []
     for key, record in state.reminders.items():
         if record.fire_at <= now:
-            diff.forget.append(key)
+            if record.source_type is SourceType.brief:
+                diff.delete.append(key)
+            else:
+                diff.forget.append(key)
         elif key in by_key:
             if by_key[key].content_hash != record.content_hash:
                 diff.update.append((key, by_key[key]))
@@ -408,7 +413,7 @@ def reconcile(
             diff.update.append((keys.pop(0), p))
         else:
             diff.create.append(p)
-    diff.delete = [k for keys in gone.values() for k in keys]
+    diff.delete += [k for keys in gone.values() for k in keys]
     return diff
 
 

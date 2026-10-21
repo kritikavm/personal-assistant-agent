@@ -46,3 +46,17 @@ def no_osascript(monkeypatch):
 
     monkeypatch.setattr(reminders, "run_osascript", blocked)
     monkeypatch.setattr(notify, "run_osascript", blocked)
+
+
+@pytest.fixture(autouse=True)
+def no_launchd(monkeypatch, tmp_path_factory):
+    """No test runs launchctl or writes to the real ~/Library/LaunchAgents."""
+    from assistant import cli, schedule
+
+    def blocked(args):
+        raise AssertionError("tests must not run launchctl")
+
+    monkeypatch.setattr(schedule, "run_launchctl", blocked)
+    home = tmp_path_factory.mktemp("home")
+    monkeypatch.setattr(cli, "schedule_home", lambda: home)
+    return home

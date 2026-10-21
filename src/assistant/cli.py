@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 import typer
 
-from assistant import __version__, config
+from assistant import __version__, config, schedule
 from assistant.agent import runner
 from assistant.agent.tools import UNAVAILABLE, QueuedChange, Snapshot, calendar_window
 from assistant.flows.ask import Source, apply_change, ask, when_text
@@ -60,6 +60,8 @@ run_app = typer.Typer(help="The daily run: morning brief and reminders.", no_arg
 app.add_typer(run_app, name="run")
 auth_app = typer.Typer(help="Connect accounts (Google Calendar, read-only).", no_args_is_help=True)
 app.add_typer(auth_app, name="auth")
+schedule_app = typer.Typer(help="The launchd job that runs the morning brief at morning_brief.time.", no_args_is_help=True)
+app.add_typer(schedule_app, name="schedule")
 
 
 @app.callback()
@@ -145,6 +147,7 @@ def doctor() -> None:
 
     for line in _reminders_lines(data_dir):
         typer.echo(line)
+    typer.echo(_schedule_line(prefs))
 
     raise typer.Exit(code=1 if errors else 0)
 
@@ -155,6 +158,32 @@ _ACCESS_FIX = {
     ReminderAccess.account_not_allowed: f'"{AGENT_LIST}" is in an account other than iCloud or On My Mac (S-14); recreate it in one of those',
     ReminderAccess.list_not_unique: f'more than one list is named "{AGENT_LIST}"; delete the extra ones so only one remains',
 }
+
+
+def schedule_home() -> Path | None:
+    """Home folder for ~/Library/LaunchAgents (None = the real one). Tests replace this."""
+    return None
+
+
+def _schedule_line(prefs) -> str:
+    """The installed launchd job vs morning_brief.time (FR-12). Reads only; changes nothing."""
+    try:
+        current = schedule.installed(schedule_home())
+    except Exception as e:  # noqa: BLE001 - an unreadable plist is reported, never repaired here
+        return f"WARN  Schedule: the installed plist can't be read ({e.__class__.__name__}); run `assistant schedule install`"
+    if current is None:
+        return "WARN  Schedule: not installed, so the morning brief won't run on its own; run `assistant schedule install`"
+    if prefs is not None:
+        problems = schedule.mismatch(current, prefs.morning_brief.time)
+        if problems:
+            return f"WARN  Schedule: {'; '.join(problems)}; run `assistant schedule install`"
+    try:
+        is_loaded = schedule.loaded()
+    except Exception as e:  # noqa: BLE001
+        return f"WARN  Schedule: couldn't ask launchd about the job ({e.__class__.__name__})"
+    if not is_loaded:
+        return "WARN  Schedule: installed but not loaded in launchd; run `assistant schedule install`"
+    return f"OK    Schedule: launchd runs `assistant run scheduled` daily at {current.hour:02d}:{current.minute:02d}"
 
 
 def _retry_timeout_once(call):
@@ -784,6 +813,35 @@ def _daily(trigger: str, dry_run: bool) -> None:
 def run_now(dry_run: bool = typer.Option(False, "--dry-run", help="Plan and print everything; write nothing but the log.")) -> None:
     """Run the morning brief and reminders now (uses one Claude session)."""
     _daily("manual", dry_run)
+
+
+@schedule_app.command("install")
+def schedule_install() -> None:
+    """Write the launchd job for morning_brief.time and (re)load it. Re-run after changing the time."""
+    data_dir = config.default_data_dir()
+    try:
+        prefs = config.load_preferences(data_dir / config.PREFERENCES_FILE)
+    except config.PreferencesError as e:
+        raise _fail([f"preferences: {p}" for p in e.problems]) from None
+    with RunLog(data_dir, "schedule.install", prefs.tz) as log:
+        try:
+            path = schedule.install(prefs.morning_brief.time, data_dir, schedule_home())
+        except (schedule.ScheduleError, OSError, subprocess.TimeoutExpired) as e:
+            log.error(e)
+            raise _fail([str(e)]) from None
+        log.event("schedule_installed")
+    typer.echo(f"Installed {path}.")
+    typer.echo(f"launchd will run `assistant run scheduled` every day at {prefs.morning_brief.time:%H:%M} (at the next wake if the Mac is asleep then).")
+
+
+@schedule_app.command("uninstall")
+def schedule_uninstall() -> None:
+    """Stop the daily job: unload it from launchd and delete its plist (kill switch step 1, S-20)."""
+    try:
+        removed = schedule.uninstall(schedule_home())
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise _fail([f"couldn't remove the schedule ({e.__class__.__name__})"]) from None
+    typer.echo("Schedule removed; the morning brief won't run on its own." if removed else "No schedule was installed.")
 
 
 @run_app.command("scheduled")

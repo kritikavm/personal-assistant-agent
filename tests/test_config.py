@@ -186,7 +186,10 @@ def test_doctor_ok(data_dir, monkeypatch):
     assert "OK    location:" in result.output
     assert 'OK    Reminders: "Agent Reminders" found in an allowed account (iCloud or On My Mac; S-14) (0 item(s))' in result.output
     warnings = [line for line in result.output.splitlines() if line.startswith("WARN")]
-    assert warnings == ["WARN  Google Calendar: not connected (runs continue with tasks only); run `assistant auth google`"]
+    assert warnings == [
+        "WARN  Google Calendar: not connected (runs continue with tasks only); run `assistant auth google`",
+        "WARN  Schedule: not installed, so the morning brief won't run on its own; run `assistant schedule install`",
+    ]
 
 
 def test_doctor_warns_on_644_file(data_dir):

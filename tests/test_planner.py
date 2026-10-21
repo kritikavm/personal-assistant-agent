@@ -378,9 +378,9 @@ def test_moved_cancelled_fixture_later_the_same_morning():
     client.calls.clear()
     _, diff, res = run_once(state, client, m_result.events, m_tasks, m_now)
     # dentist moved → update; lunch cancelled → delete; new brief item at 09:31 → create.
-    # The 09:00 design-review reminder and the 08:01 brief item are past: untouched, dropped from state.
-    assert (res.created, res.updated, res.deleted, res.forgotten) == (1, 1, 1, 2)
-    assert [c[0] for c in client.writes()] == ["delete", "update", "create"]
+    # The 08:01 brief item is past and ours → deleted. The 09:00 design-review reminder is past: untouched, dropped.
+    assert (res.created, res.updated, res.deleted, res.forgotten) == (1, 1, 2, 1)
+    assert [c[0] for c in client.writes()] == ["delete", "delete", "update", "create"]
     assert diff.create[0].source_type is SourceType.brief and diff.create[0].fire_at.isoformat() == "2026-10-28T09:31:00-07:00"
 
 
@@ -435,10 +435,12 @@ def test_past_reminders_are_never_changed():
     later = at(2026, 10, 28, 12)  # 09:00 and 11:00 reminders have fired
     client.calls.clear()
     events = [e for e in result.events if e.id != "evt002"]  # its reminder fired already
+    brief_id = next(r.reminder_id for r in state.reminders.values() if r.source_type is SourceType.brief)
     _, diff, res = run_once(state, client, events, tasks, later)
-    assert res.deleted == 0 and res.updated == 0
-    assert not [c for c in client.writes() if c[0] in ("update", "delete")]
-    assert res.forgotten == 3  # 08:01 brief, 09:00 and 11:00 meetings
+    assert res.updated == 0
+    # the only write to a past reminder is deleting our own past brief item
+    assert [c for c in client.writes() if c[0] in ("update", "delete")] == [("delete", brief_id)]
+    assert res.deleted == 1 and res.forgotten == 2  # 09:00 and 11:00 meetings: left in Reminders
     assert all(r.fire_at > later for r in state.reminders.values())
 
 
@@ -712,3 +714,48 @@ def test_cli_rebuild_when_osascript_fails_changes_nothing(cli_env, monkeypatch):
     monkeypatch.setattr(cli, "reminders_client", lambda: AppleRemindersClient(failing))
     out = rebuild("y\n")
     assert out.exit_code == 1 and "couldn't read" in out.output and "Nothing was changed" in out.output
+
+
+# --- Past brief items are cleaned up (only ours, only tracked) ---------------------------------------------
+
+
+def test_past_brief_item_is_deleted_but_nothing_else_is_touched():
+    from assistant.integrations.reminders import ReminderItem
+
+    s, result, tasks, now, state, client, plan, _ = base_run()
+    mine = ReminderItem(reminder_id="x-apple-reminder://00000000-0000-4000-8000-000000000001", title="Morning brief ready (by hand)", notes="")
+    marked_untracked = ReminderItem(
+        reminder_id="x-apple-reminder://00000000-0000-4000-8000-000000000002",
+        title="Morning brief ready",
+        notes="[pa:default:brief:2026-10-27:2026-10-27T08:01:00-07:00]",
+    )
+    client.items[mine.reminder_id] = mine
+    client.items[marked_untracked.reminder_id] = marked_untracked
+    brief_key, brief = next((k, r) for k, r in state.reminders.items() if r.source_type is SourceType.brief)
+    past_meetings = {r.reminder_id for r in state.reminders.values() if r.source_type is not SourceType.brief and r.fire_at <= at(2026, 10, 29, 9)}
+    client.calls.clear()
+    tomorrow = at(2026, 10, 29, 9)
+    _, diff, res = run_once(state, client, result.events, tasks, tomorrow)
+    assert brief_key in diff.delete and brief_key not in diff.forget
+    assert ("delete", brief.reminder_id) in client.writes() and brief.reminder_id not in client.items
+    assert brief_key not in state.reminders
+    # a hand-made item and a marked item not in state.json are never touched, nor are past meeting reminders
+    assert mine.reminder_id in client.items and marked_untracked.reminder_id in client.items
+    deleted = {c[1] for c in client.writes() if c[0] == "delete"}
+    assert not deleted & past_meetings and past_meetings <= set(client.items)
+
+
+def test_past_brief_item_already_gone_is_dropped_quietly():
+    s, result, tasks, now, state, client, plan, _ = base_run()
+    brief_key, brief = next((k, r) for k, r in state.reminders.items() if r.source_type is SourceType.brief)
+    del client.items[brief.reminder_id]  # I deleted or the list lost it
+    _, _, res = run_once(state, client, result.events, tasks, at(2026, 10, 29, 9))
+    assert res.error is None and res.missing >= 1 and brief_key not in state.reminders
+
+
+def test_future_brief_item_is_not_deleted_early():
+    s, result, tasks, now, state, client, plan, _ = base_run()
+    brief = next(r for r in state.reminders.values() if r.source_type is SourceType.brief)
+    client.calls.clear()
+    run_once(state, client, result.events, tasks, brief.fire_at - timedelta(minutes=1))
+    assert ("delete", brief.reminder_id) not in client.writes()
