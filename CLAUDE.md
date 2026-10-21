@@ -94,8 +94,10 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 
 - **M14 · Real Reminders and notifications** built (2026-10-20), verified and approved by the user: fixed AppleScripts with argv (check, list, create, update, delete; every write re-checks the list), `MacNotifier`, `doctor` Reminders and `state.json` lines (one retry on timeout). S-14 now allows iCloud by the user's choice. Live: safety test 6 passed, dry run wrote nothing, real run ok (2 reminders, brief, notification). pytest 780 + 1 skipped.
 
+- **M15 · Scheduling with launchd** built (2026-10-21), verified and approved by the user: plist template + `schedule install/uninstall`, `doctor` schedule line, `launchd.err` pre-created 600, runs delete their own past brief items, brief items always written at least 1 min ahead. Live: kickstart under launchd ok (Keychain, Reminders, Claude), second kickstart skipped with no session, catch-up after sleep ok (ran in dark wakes 08:14–08:56). pytest 803 + 1 skipped.
+
 **Next step**
-- M15 · Scheduling with launchd: in progress.
+- Marker format in reminder notes (shown to the user before any change); then M16 · Full eval run, safety tests, README.
 
 ## Open issues / verify during build
 
@@ -109,6 +111,6 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - [x] The Google login added no `openid` or other scope: tokeninfo shows only `calendar.events.readonly` (M13).
 - [x] Birthdays (M13): primary returns `eventType: birthday` events by default; the contacts birthdays calendar repeats them, so preferences list `primary` only (user's decision).
 - [x] The SDK's `CanUseToolShadowedWarning` is expected by design (ARCHITECTURE §7) and hidden in `agent/runner.py` (M13).
-- [ ] Reminders AppleScript: create/update/delete by ID works under launchd, and the permission prompts.
-- [ ] launchd catch-up behaviour after sleep; Keychain access from a LaunchAgent.
+- [x] Reminders AppleScript works under launchd (create, update, delete by ID); macOS asked once for the launchd job's Automation and Keychain access (M15).
+- [x] launchd catch-up after sleep: the missed 08:00 job started in a background dark wake (08:14) and finished across later dark wakes (08:56), before the lid was opened. Keychain access from the LaunchAgent works (M15).
 - [x] Environment: macOS blocked directory listing of the project folder (Documents privacy) on 2026-10-10. Resolved the same day by resetting the Terminal's Files and Folders permission; listing and reading now work.

@@ -4,6 +4,24 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 ---
 
+## 2026-10-21 · M15 live: catch-up after sleep
+
+- The user left the Mac asleep over 08:00 and opened it later; Reminders showed the 08:15 brief item and `doctor` was all OK.
+- `pmset -g log` (sleep and wake entries only, approved): no full wake between 07:00 and the lid opening at 10:06; dark (maintenance) wakes at 08:14, 08:23 and 08:55. The run log matches them: `run_start` 08:14:05, calendar/tasks/Reminders loaded 08:23:44, plan and writes 08:56:04–08:56:11, `run_end ok` (33.8 s of awake time). So launchd started the missed job in the first dark wake after 08:00, and the run progressed only while the Mac was briefly awake. The notification was posted at 08:56 while the lid was closed.
+- The run deleted yesterday's 20:07 brief item (tracked), moved the cover-letter extra to 10-28 09:00 (update in place) and created today's brief item. The list holds 3 items: today's brief item and the extra (both tracked), and yesterday's 12:52 brief item, which the user ticked off; it's untracked, so runs never touch it.
+- Findings for review: (1) the brief item's time is set from the run's start (08:15) but it was written at 08:56, so it was already past when created and gave no alert; (2) the `[pa:]` marker is visible in each reminder's notes.
+
+- The `notification_sent` event is in the log at 08:56:11; the user may have missed it because it was posted during a dark wake with the lid closed.
+- Review answers: (1) fix the brief item's time; (2) show the marker format first; (3) make the ARCHITECTURE additions; (4) commit M15 as final once 1 and 3 pass.
+- (1) `planner.brief_not_past` + `apply_diff(prefs=, clock=)`: right before a brief item is written, a time less than 1 minute ahead moves to the first whole minute at least 1 minute ahead, then out of quiet hours; the state key and marker follow. `daily_run` takes a `clock` (system clock by default; tests pass the fixture time). Five new tests; 6 of 6 mutations caught (work stashed first, files restored from memory, tree checked identical to the stash before dropping it).
+- (3) ARCHITECTURE: Scheduler row (plist details), CLI `doctor` schedule states, §6.1 brief-time rule, "Mac asleep" failure row (dark wakes, notification), `schedule.py` in the folder plan.
+- pytest 803 passed, 1 skipped. M15 committed as final (code and docs separately).
+
+**Next step**
+- Marker format: the user sees the proposed one-line format before any change. Then M16.
+
+---
+
 ## 2026-10-17
 
 **What we did**
@@ -81,9 +99,6 @@ Newest entry at the top. No secrets, tokens or personal data.
 - Fixed: launchd created `data/logs/launchd.err` as 644 (it opens the file before applying `Umask`); `schedule install` now creates it as 600 first. The existing file was set to 600.
 - The user decided each run deletes its own past brief items (tracked in `state.json` only), so "Agent Reminders" doesn't collect one per day. Reconcile change, three new tests, two planner tests updated; both mutations of the condition caught. ARCHITECTURE §6.1 updated. pytest 798 passed, 1 skipped.
 - While checking those mutations, my restore step (`git checkout` on `planner.py`) also discarded the uncommitted change; it was re-applied at once and the suite rerun.
-
-**Next step**
-- Step 4: catch-up after sleep over the 08:00 brief time; then the user's review of M15.
 
 ---
 
