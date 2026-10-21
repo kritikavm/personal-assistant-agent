@@ -97,7 +97,7 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - **M15 · Scheduling with launchd** built (2026-10-21), verified and approved by the user: plist template + `schedule install/uninstall`, `doctor` schedule line, `launchd.err` pre-created 600, runs delete their own past brief items, brief items always written at least 1 min ahead. Live: kickstart under launchd ok (Keychain, Reminders, Claude), second kickstart skipped with no session, catch-up after sleep ok (ran in dark wakes 08:14–08:56). pytest 803 + 1 skipped.
 
 **Next step**
-- Marker format in reminder notes (shown to the user before any change); then M16 · Full eval run, safety tests, README.
+- Publishing: the user marks the text checklist for brief 1, 2, 3, 6 and Q&A 1, 4, 5, 6 (2026-10-21 run); then the GitHub steps, one at a time. Marker format is a Phase 2 item (PRD §11). Then M16 · full eval rerun.
 
 ## Open issues / verify during build
 

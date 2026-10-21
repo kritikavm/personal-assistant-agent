@@ -322,7 +322,7 @@ Plain code only, no AI. Run only by me, never automatically (FR-23a).
 | Brief time changed but schedule not reinstalled (FR-12) | `doctor` compares plist and preferences | Warning telling me to run `assistant schedule install`. |
 | Google refresh token expires every 7 days (app in *Testing*, D4) | OAuth `invalid_grant` | Expected about once a week. `auth google` stores the sign-in time with the token in the Keychain, and `doctor` shows when the login ends (sign-in + 7 days) and warns in its last 2 days. Once it ends, handled as "auth expired" above: `doctor` and the brief say to run `assistant auth google`. |
 
-## 9. Planned folder structure (not created yet)
+## 9. Folder structure
 
 ```
 personal-assistant-agent/

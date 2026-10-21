@@ -4,14 +4,34 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 ---
 
+## 2026-10-21 · Release audit fixes and final eval check (nothing pushed)
+
+- The user's decisions on the release audit: email stays in commits, name stays in injection case 7, no LICENSE, no CI for now.
+- P0: README opening rewritten around the positioning (permission-constrained agent; narrow V1 use case; code handles facts, AI handles judgment); eval claims now say which prompt each result is on.
+- P1: setup step fixed (`doctor` creates `data/` as 700 before copying preferences); "How to read this repo" table; stale wording fixed (ARCHITECTURE §9 heading, PRD S-16, SECURITY status and `events.get`, EVALS counts: capture 36, injection 7, repeat 1 Layer B case, 72 sessions for a full run); no fixed test count in the README.
+- P2: personal timing and setup details trimmed from the session log.
+- Docs added: SECURITY §1.1 permission table by flow; `docs/example-run.md` (a real base-fixture run: tool calls, proposal, validation, writes); `docs/demo.md` (2-minute case study, fixtures only); `docs/validation.md` (7-day live plan); generated status table in EVALS §7.0 and the README.
+- Eval runner: `--cases`, per-case `fixture` for capture, `--summary` (status table from `evals/results/`), tool-call order recorded in daily-set results, fixture clock pinned. New fixture `categories_other` and capture case 36; the untested M10 "other" capture rule recorded in EVALS §7.2. pytest 809 passed, 1 skipped.
+- Final eval check (16 sessions, approved): capture 5/5 (incl. case 36), extras 2/3 (case 2 the same reasonable miss as before), brief 4/4 exact (all 6 brief cases now on the current prompt), Q&A 4/4 exact on the polished prompt. Checklist marks for brief 1, 2, 3, 6 and Q&A 1, 4, 5, 6 are the user's, pending. Repeat set not rerun (rerun pending in M16).
+
+---
+
+## 2026-10-21 · Publishing prep (nothing pushed)
+
+- Marker format deferred: added to PRD §11 Phase 2 (compact `[pa:]` marker on the last line of the notes).
+- README.md written: value proposition, problem, what works today, Mermaid architecture, design principles, the two hard rules, safety model, eval results (with "partly checked" marked), setup, known limitations, roadmap.
+- Privacy scan of the working tree and all 34 commits: gitleaks clean on history; the only working-tree finding is the OAuth client file in gitignored `data/secrets/`. No `data/` file was ever committed. Test tokens are fakes; committed Reminders IDs are fakes; the live task list holds only tasks copied from `examples/tasks.json`. To decide: the commit author email (in all 34 commits) and the user's first name in the injection fixture written by the user.
+
+---
+
 ## 2026-10-21 · M15 live: catch-up after sleep
 
-- The user left the Mac asleep over 08:00 and opened it later; Reminders showed the 08:15 brief item and `doctor` was all OK.
-- `pmset -g log` (sleep and wake entries only, approved): no full wake between 07:00 and the lid opening at 10:06; dark (maintenance) wakes at 08:14, 08:23 and 08:55. The run log matches them: `run_start` 08:14:05, calendar/tasks/Reminders loaded 08:23:44, plan and writes 08:56:04–08:56:11, `run_end ok` (33.8 s of awake time). So launchd started the missed job in the first dark wake after 08:00, and the run progressed only while the Mac was briefly awake. The notification was posted at 08:56 while the lid was closed.
-- The run deleted yesterday's 20:07 brief item (tracked), moved the cover-letter extra to 10-28 09:00 (update in place) and created today's brief item. The list holds 3 items: today's brief item and the extra (both tracked), and yesterday's 12:52 brief item, which the user ticked off; it's untracked, so runs never touch it.
-- Findings for review: (1) the brief item's time is set from the run's start (08:15) but it was written at 08:56, so it was already past when created and gave no alert; (2) the `[pa:]` marker is visible in each reminder's notes.
+- The Mac was asleep at the brief time and opened later; the run had already happened and `doctor` was all OK.
+- Sleep/wake log vs run log: launchd started the missed job in the first background (dark) wake after the brief time, and the run progressed only during later short dark wakes, finishing about 40 minutes after it started (34 s of awake time), with status `ok`. Its notification was posted while the screen was off.
+- The run deleted the previous day's tracked brief item, updated the extra reminder in place and created today's brief item. An older brief item from before the cleanup rule stays (untracked, so runs never touch it).
+- Findings for review: (1) the brief item's time was set from the run's start, but it was written much later, so it was already past and gave no alert; (2) the `[pa:]` marker is visible in each reminder's notes.
 
-- The `notification_sent` event is in the log at 08:56:11; the user may have missed it because it was posted during a dark wake with the lid closed.
+- The `notification_sent` event is in the log; it was posted during a dark wake with the screen off, so it was easy to miss.
 - Review answers: (1) fix the brief item's time; (2) show the marker format first; (3) make the ARCHITECTURE additions; (4) commit M15 as final once 1 and 3 pass.
 - (1) `planner.brief_not_past` + `apply_diff(prefs=, clock=)`: right before a brief item is written, a time less than 1 minute ahead moves to the first whole minute at least 1 minute ahead, then out of quiet hours; the state key and marker follow. `daily_run` takes a `clock` (system clock by default; tests pass the fixture time). Five new tests; 6 of 6 mutations caught (work stashed first, files restored from memory, tree checked identical to the stash before dropping it).
 - (3) ARCHITECTURE: Scheduler row (plist details), CLI `doctor` schedule states, §6.1 brief-time rule, "Mac asleep" failure row (dark wakes, notification), `schedule.py` in the folder plan.
@@ -62,9 +82,9 @@ Newest entry at the top. No secrets, tokens or personal data.
   - Tests never touch the real Keychain or Google (autouse fakes). pytest 719 passed, 1 skipped; 10 of 10 mutations caught.
 - The user did the Google Cloud steps. D4 changed: publishing now needs a homepage and privacy policy URL, so the app stays in *Testing* with the user as the only test user, and the login ends 7 days after sign-in. Updated ARCHITECTURE §11 and the failure table, SECURITY §11, the plan's M13 step and CLAUDE.md. `auth google` now stores the sign-in time with the token (kept across refreshes); `doctor` shows when the login ends and warns in the last 2 days. pytest 729 passed, 1 skipped.
 
-- The user moved the client file into `data/secrets/` with Finder (600, ignored by git; this session can't read `~/Downloads`, so a leftover copy there wasn't checked) and ran `assistant auth google`: connected, exactly `calendar.events.readonly`.
+- The user saved the client file in `data/secrets/` (600, ignored by git) and ran `assistant auth google`: connected, exactly `calendar.events.readonly`.
 - Live checks:
-  - `doctor`: Claude, preferences, Google Calendar (scope, nothing else) and login end all OK; exit 0. One WARN: a Finder `.DS_Store` in `data/` at 644.
+  - `doctor`: Claude, preferences, Google Calendar (scope, nothing else) and login end all OK; exit 0. One WARN: a Finder `.DS_Store` in `data/` (now ignored by `doctor`).
   - Safety tests 1 and 2 pass with the real Google libraries installed. tokeninfo shows no `openid`; refresh token present.
   - Read-only probes (counts and ID shapes only, nothing personal printed): no events today…+7; over a wider window, primary event IDs incl. a recurring instance match the log format, and primary returns `birthday` events by default. The contacts birthdays calendar exists; its event ID has uppercase letters and fails the log format, and its one birthday is the same as the primary `birthday` event (same date and title), so it would get two reminders.
   - `ask "What does my day look like?"` (1 session, approved): "no events today"; the calendar was loaded (0 events, 0 skipped); no task was due today or overdue. The SDK printed a `CanUseToolShadowedWarning` (`can_use_tool` isn't called for allowlisted tools). That's expected by design (ARCHITECTURE §7); the PreToolUse hook still ran (`tool_allowed` logged).
@@ -77,7 +97,7 @@ Newest entry at the top. No secrets, tokens or personal data.
 - M14 · Real Reminders and notifications, in progress (2026-10-19):
   - `integrations/reminders.py`: five fixed AppleScripts (check, list, create, update, delete), values only as `osascript` arguments; dates as Mac-local components; control characters stripped; list output split on ASCII 30/31 and any malformed record fails the read. Errors: -1743 → access denied, -1728/-1719 → not found, guard errors 9001–9003 → blocked, anything else → script error.
   - `integrations/notify.py`: fixed `display notification` script with argv. `doctor`: Reminders line and `state.json` check (no backup copy); retries the Reminders check once on a timeout (doctor only; user approved).
-  - Live: the user set notification previews to When Unlocked and allowed Terminal to control Reminders. `doctor` saw "list missing" before the list existed. The new list was blocked as not On My Mac: reading only account names showed this Mac has a single Reminders account, iCloud (no account headings appear in the sidebar with one account).
+  - Live: notification previews set to When Unlocked; Reminders automation allowed. `doctor` saw "list missing" before the list existed, then blocked the new list as not On My Mac: it was in an iCloud account.
   - The user chose option B: S-14 now allows On My Mac or iCloud as a deliberate privacy exception (alerts reach the iPhone), and the list must be unique; every write script re-checks this. Updated PRD S-14/FR-23, SECURITY §5/§11/§12/ASI03, ARCHITECTURE (CLI, preflight, sequence, failure row, setup), the plan's M14, EVALS §4.6 row, CLAUDE.md. `not_on_my_mac` renamed `account_not_allowed`; new `list_not_unique`. Also fixed the run's access-denied hint (Automation, not Reminders).
   - pytest 780 passed, 1 skipped; 16 of 16 mutations caught. `doctor` all OK.
 
@@ -178,7 +198,7 @@ Newest entry at the top. No secrets, tokens or personal data.
 ## 2026-10-14
 
 **What we did**
-- **Moved the project** from `~/Documents/VibeCoding` to `~/Developer/personal-assistant-agent` (copied by the user). Reason: `~/Documents` is synced by iCloud Desktop & Documents, which would upload `data/` (tasks, briefs, logs, OAuth client file) off the Mac. Work happens only in the new folder from now on; the user will delete the old copy after M1 passes.
+- **Moved the project** out of an iCloud-synced folder into `~/Developer`. Reason: a synced folder would upload `data/` (tasks, briefs, logs, OAuth client file) off the Mac.
 - Rebuilt `.venv` with `uv sync` (Python 3.12.15). It wasn't copied. Cleared the stale `__pycache__`/`.pytest_cache`. `core.hooksPath` survived the copy.
 - Finished **M1 · Schemas, preferences, data folder**. Most of it was written at the end of the 2026-10-11 session but not logged: `schemas.py` (`Task`, `Preferences`), `config.py` (preferences loading with errors that name the field, `data/` helper with `700`/`600`, permission check), `examples/preferences.yaml` and `examples/tasks.json` (fake), and `assistant doctor`. Runtime deps `pydantic` and `pyyaml` were added then.
 - New, approved by the user: `doctor` warns if `data/` is inside an iCloud-synced folder (iCloud Drive, or `~/Desktop`/`~/Documents` when Desktop & Documents sync is on, detected by their links inside iCloud Drive). It's a warning and doesn't change the exit code. Added a "Project location" line to SECURITY.md §5.
@@ -272,7 +292,7 @@ Newest entry at the top. No secrets, tokens or personal data.
 ## 2026-10-10 (session 2)
 
 **What we did**
-- Fixed macOS folder access (reset the Terminal's Files and Folders permission) and marked it resolved in CLAUDE.md.
+- Fixed a macOS folder-access permission problem and marked it resolved in CLAUDE.md.
 - Applied the user's security review to SECURITY.md, PRD.md and ARCHITECTURE.md: new S-14–S-20, safety tests 6–10, AppleScript argument passing, supply chain, kill switch, OWASP Top 10 for Agentic Applications (2026) mapping, and the resolution of all 7 earlier gaps.
 - Applied the follow-up answers: a list that isn't On My Mac blocks reminder writes (FR-23 path), briefs are deleted after 30 days, a setup step sets notification previews to *When Unlocked*, and the OWASP names were checked against OWASP's announcement post (ASI02 "Tool Misuse", ASI05 "Unexpected Code Execution").
 - Wrote EVALS.md (two layers, fixtures, 8 eval sets, scoring, usage, results) and applied the user's decisions on its 9 conflicts to PRD, ARCHITECTURE and SECURITY.

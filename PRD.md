@@ -202,7 +202,7 @@ quiet_hours:                       # no reminders fire in this window
 - **S-13** Logs store actions, IDs, statuses and errors only: no event titles, task text, descriptions, questions, answers or brief content. Validation errors are logged as field paths, not values. Logs and saved briefs are kept for 30 days, then deleted automatically.
 - **S-14** "Agent Reminders" must be the only list with that name, in the **On My Mac** or **iCloud** account. iCloud is a deliberate privacy exception I chose on 2026-10-19 so that alerts reach my iPhone: the titles of the assistant's reminders (event names, task text, birthdays) then sync to iCloud and my other devices. Nothing else leaves the Mac this way, and writes stay limited to that one list. Every run, and every write script, checks the list's name, uniqueness and account before writing. If any check fails, all reminder writes are skipped (as in FR-23), the brief is still written, and the reason is shown in the brief and in `doctor`.
 - **S-15** Notifications can appear on the lock screen, so they show only a neutral summary (e.g. "Morning brief ready: 3 meetings, 2 tasks due"), with no event titles, task text or other details. Alerts shown by the Reminders app itself include the reminder title; this is accepted as a known limitation, and setup tells me to set macOS notification previews to *When Unlocked*.
-- **S-16** Agent SDK session history: during the build, check whether the SDK saves session transcripts under `~/.claude/`. If it does, turn that off if possible; otherwise document the location in SECURITY.md and add it to the cleanup steps (S-20).
+- **S-16** Agent SDK session history: sessions don't save transcripts. They run with session persistence off; verified in M7 that a real session left no file under `~/.claude/projects/`, so there is nothing to clean up (S-20).
 
 ### Hardening
 
@@ -251,6 +251,7 @@ Future phases are **planned, not built.**
 - Quicker capture (e.g. a macOS shortcut or a Reminders inbox the agent reads)
 - Recurring tasks
 - An end-of-day review
+- Cleaner reminder notes: a short readable line first, then a compact `[pa:]` marker on the last line (e.g. `[pa:d:brief:2026-10-21:202610210815]`); `state rebuild` reads both formats (proposed and deferred in M15)
 
 **Phase 3: more approved tools, each with its own permissions**
 - Email (e.g. read-only Gmail to spot deadlines and action items), with its own minimum scope and permission checks

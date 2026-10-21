@@ -1,6 +1,6 @@
 # Security
 
-**Status:** Phase 1 design (not yet built) · **Last updated:** 2026-10-10
+**Status:** Phase 1 built (M0–M15) · **Last updated:** 2026-10-21
 
 This document describes how the personal assistant agent limits what it can do. It summarises the security parts of [PRD.md](PRD.md) (requirement IDs S-x, FR-x) and [ARCHITECTURE.md](ARCHITECTURE.md). Where these documents disagree, the PRD wins. §12 records how the gaps from the first security review were resolved.
 
@@ -12,7 +12,7 @@ This document describes how the personal assistant agent limits what it can do. 
 
 | | What | Who performs it |
 |---|---|---|
-| **Can read** | Google Calendar events, today to +7 days (primary + birthdays calendar) · `tasks.json` / `completed_tasks.json` · `preferences.yaml` | Agent, via read-only tools |
+| **Can read** | Google Calendar events, today to +7 days (the calendars named in preferences: primary, plus a birthdays calendar if configured) · `tasks.json` / `completed_tasks.json` · `preferences.yaml` | Agent, via read-only tools |
 | | `state.json` · the Google OAuth client file in `data/secrets/` · the Keychain token | Plain code only |
 | **Can write** | `tasks.json`, `completed_tasks.json` and their backups · its own files in `data/` (`state.json`, `briefs/`, `logs/`, `.run.lock`) · the Apple Reminders list **"Agent Reminders"** | Plain code only |
 | **Can display** | macOS notifications with a neutral summary only (display only, nothing stored) | Plain code, fixed script |
@@ -25,13 +25,35 @@ This document describes how the personal assistant agent limits what it can do. 
 - use a paid API key, usage credits or another model
 - send data anywhere except Claude (via the Agent SDK) and Google Calendar (read-only)
 
+### 1.1 Permission table by flow
+
+What Claude may call in each flow (enforced by the `PreToolUse` hook, deny by default; the allowlists are `FLOW_TOOLS` in `src/assistant/agent/tools.py`), and what plain code writes afterwards.
+
+| Tool or action | `run` (daily brief) | `add` (capture) | `ask` (Q&A) | Kind |
+|---|---|---|---|---|
+| `get_preferences` | ✅ | ✅ | ✅ | read |
+| `get_tasks` | ✅ open tasks only (FR-11a) | ✅ (completed on request) | ✅ (completed on request) | read |
+| `get_calendar_events` (today…+7, no attendees or descriptions) | ✅ | ❌ | ✅ | read |
+| `get_default_reminders` | ✅ | ❌ | ❌ | read (code-computed) |
+| `find_free_time` | ✅ | ❌ | ✅ | read (code-computed) |
+| `submit_daily_plan` | ✅ | ❌ | ❌ | proposal |
+| `submit_task` | ❌ | ✅ | ❌ | proposal |
+| `submit_answer` | ❌ | ❌ | ✅ | proposal |
+| `propose_task_change` | ❌ | ❌ | ✅ (max 5, queued) | proposal |
+| Built-in SDK tools (Bash, Read, Write, Edit, WebFetch, WebSearch, Agent, …) | ❌ | ❌ | ❌ | off and disallowed |
+| Any other tool name | ❌ | ❌ | ❌ | denied and logged |
+| **Code writes afterwards** | Reminders in "Agent Reminders" (only items it tracks), `state.json`, `briefs/`, notification (counts only) | `tasks.json`, after I confirm | `tasks.json` / `completed_tasks.json`, each change after its own `Apply? [y/N]` | |
+| **Step limit** | 15 turns | 6 turns | 10 turns | |
+
+Commands with no AI (`tasks …`, `state rebuild`, `auth google`, `schedule …`, `doctor`) never start a Claude session.
+
 ## 2. Rule 1: Google Calendar is read-only
 
 Enforced in three independent layers, so that a prompt or a bug in one layer can't produce a calendar write:
 
 1. **OAuth scope:** only `https://www.googleapis.com/auth/calendar.events.readonly` is requested (S-1). Google itself rejects any write made with this token.
 2. **Startup scope check:** before every run, code reads the token's granted scopes (Google tokeninfo) and refuses to start if anything beyond that read-only scope is present (S-2).
-3. **No write code:** the calendar client wraps only `events.list` and `events.get`. No create/update/delete method exists in the codebase, and a test asserts that none is ever referenced (S-2).
+3. **No write code:** the calendar client calls only `events.list`. No create/update/delete method exists in the codebase, and a test asserts that none is ever referenced (S-2).
 
 The calendar tool also clamps date ranges to today…+7 days and drops attendees and descriptions before returning events (FR-1, FR-2).
 
