@@ -1,0 +1,171 @@
+{
+  "set": "extras",
+  "started": "2026-10-21T14:44:40-07:00",
+  "finished": "2026-10-21T14:45:17-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "3faa9692",
+  "code_version": "408eef9",
+  "fixture": "per case",
+  "summary": {
+    "cases": 3,
+    "run": 3,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "passed": 2,
+    "target": "≥ 7 of 8 correct; 0 invalid extras reach the plan",
+    "met": false,
+    "dropped_extras": 0
+  },
+  "cases": [
+    {
+      "id": 1,
+      "fixture": "base",
+      "now": "2026-10-28T08:00:00-07:00",
+      "note": "Interview tomorrow at 13:00; preferences say interviews get a reminder the day before.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 15401,
+      "tool_calls": [
+        "get_preferences",
+        "get_tasks",
+        "get_calendar_events",
+        "get_default_reminders",
+        "find_free_time",
+        "submit_daily_plan"
+      ],
+      "should": [
+        "evt007"
+      ],
+      "must_not": [
+        "t-0108",
+        "t-0109",
+        "evt009",
+        "evt001"
+      ],
+      "proposed": [
+        {
+          "title": "Tomorrow 13:00: interview, review your notes and questions",
+          "fire_at": "2026-10-28T18:00:00-07:00",
+          "source_type": "meeting",
+          "source_id": "evt007",
+          "reason": "Job interview tomorrow; preferences ask for a day-before reminder.",
+          "dropped": null
+        },
+        {
+          "title": "Rent payment due tomorrow 07:30: send it tonight",
+          "fire_at": "2026-10-28T19:00:00-07:00",
+          "source_type": "task",
+          "source_id": "t-0111",
+          "reason": "High-priority hard deadline early tomorrow, before the default reminder is useful.",
+          "dropped": null
+        },
+        {
+          "title": "Early flight Fri 06:30: pack and check in tonight",
+          "fire_at": "2026-10-29T18:30:00-07:00",
+          "source_type": "meeting",
+          "source_id": "evt011",
+          "reason": "Travel with a very early departure.",
+          "dropped": null
+        }
+      ],
+      "checks": {
+        "valid": true,
+        "should": true,
+        "must_not": true,
+        "none_proposed": null
+      },
+      "passed": true
+    },
+    {
+      "id": 2,
+      "fixture": "base",
+      "now": "2026-10-27T08:00:00-07:00",
+      "note": "The day before a high-priority job deadline (expense report, 10-28 17:00), two days before the interview.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 10572,
+      "tool_calls": [
+        "get_preferences",
+        "get_tasks",
+        "get_calendar_events",
+        "get_default_reminders",
+        "find_free_time",
+        "submit_daily_plan"
+      ],
+      "should": [
+        "evt007",
+        "t-0101"
+      ],
+      "must_not": [
+        "t-0108",
+        "t-0109",
+        "evt023"
+      ],
+      "proposed": [
+        {
+          "title": "Tomorrow 13:00: interview, review your notes",
+          "fire_at": "2026-10-28T18:00:00-07:00",
+          "source_type": "meeting",
+          "source_id": "evt007",
+          "reason": "Job interview tomorrow; review notes and questions the day before.",
+          "dropped": null
+        },
+        {
+          "title": "Rent due tomorrow 07:30: send payment tonight",
+          "fire_at": "2026-10-28T20:00:00-07:00",
+          "source_type": "task",
+          "source_id": "t-0111",
+          "reason": "High-priority rent due 07:30 Thursday, before the default 07:00 reminder is practical.",
+          "dropped": null
+        }
+      ],
+      "checks": {
+        "valid": true,
+        "should": false,
+        "must_not": true,
+        "none_proposed": null
+      },
+      "passed": false
+    },
+    {
+      "id": 6,
+      "fixture": "routine_week",
+      "note": "Routine meetings and low-stakes tasks only.",
+      "status": "run",
+      "retries": 0,
+      "turns": 7,
+      "duration_ms": 8369,
+      "tool_calls": [
+        "get_preferences",
+        "get_tasks",
+        "get_calendar_events",
+        "get_default_reminders",
+        "find_free_time",
+        "submit_daily_plan"
+      ],
+      "should": [],
+      "must_not": [
+        "rtn001",
+        "rtn002",
+        "rtn003",
+        "rtn004",
+        "rtn005",
+        "t-0301",
+        "t-0302",
+        "t-0303",
+        "t-0304",
+        "t-0305"
+      ],
+      "proposed": [],
+      "checks": {
+        "valid": true,
+        "should": true,
+        "must_not": true,
+        "none_proposed": true
+      },
+      "passed": true
+    }
+  ]
+}

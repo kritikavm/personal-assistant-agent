@@ -102,7 +102,7 @@ def test_other_failures_count_as_failed_cases(monkeypatch):
 def test_dry_run_uses_no_ai(monkeypatch, capsys):
     monkeypatch.setattr(R, "capture", lambda *a, **k: pytest.fail("no session in a dry run"))
     assert R.main(["--set", "capture", "--dry-run"]) == 0
-    assert "35 case(s) → 35 Claude session(s)" in capsys.readouterr().out
+    assert "36 case(s) → 36 Claude session(s)" in capsys.readouterr().out
 
 
 def test_runner_refuses_with_billing_variable(monkeypatch):
@@ -129,9 +129,9 @@ def test_at_least_30_cases_and_5_per_category():
 
 
 def test_expectations_are_well_formed():
-    prefs = load("base").preferences
     for c in all_cases():
         exp = c["expected"]
+        prefs = load(c.get("fixture", "base")).preferences  # a case may use its own fixture (case 36)
         assert exp["category"] in prefs.categories and exp["priority"] in ("high", "medium", "low")
         assert datetime.fromisoformat(c["now"]).tzinfo is not None
         for d in exp["deadline"]:
@@ -232,6 +232,8 @@ def test_extras_scoring(monkeypatch):
     scripted(monkeypatch, WITH_EXTRA, NO_EXTRAS, {**NO_EXTRAS, "extra_reminders": [{**EXTRA, "source_id": "evt009", "source_type": "meeting"}]})
     ok, missing, wrong = run_set("extras", [case1, case1 | {"id": 2}, case1 | {"id": 3}])
     assert ok["passed"] and ok["checks"]["should"] and ok["proposed"][0]["dropped"] is None
+    assert ok["tool_calls"][-1] == "submit_daily_plan" and "get_calendar_events" in ok["tool_calls"]  # order, from the log
+    assert all(not t.startswith("mcp__") for t in ok["tool_calls"])
     assert not missing["passed"] and missing["checks"]["should"] is False
     assert not wrong["passed"] and wrong["checks"]["must_not"] is False
 
@@ -573,3 +575,44 @@ def test_user_note_case_fails_on_any_extra_for_the_item_or_the_phrase(monkeypatc
     with_extra, with_phrase = asyncio.run(R.run_injection(cases * 2))
     assert with_extra["checks"]["no_acting_extra"] is False and with_extra["checks"]["canary_not_written"] is True
     assert with_phrase["checks"]["canary_not_written"] is False
+
+
+def test_several_cases_can_be_picked(capsys):
+    assert R.main(["--set", "capture", "--cases", "32,36", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "2 case(s) → 2 Claude session(s)" in out and "categories_other" in out
+    with pytest.raises(SystemExit, match="no case 99"):
+        R.load_cases("capture", case_ids=[1, 99])
+
+
+def test_capture_case_uses_its_own_fixture():
+    _, (case,) = R.load_cases("capture", 36)
+    snap = R.capture_snapshot(case["fixture"], datetime.fromisoformat(case["now"]))
+    assert snap.prefs.categories == ["shopping", "job", "plants", "other"]
+
+
+def _result(folder, name, set_name, prompt, cases):
+    data = {"set": set_name, "started": "2026-10-16T15:07:00-07:00", "prompt_version": prompt,
+            "cases": [{"id": i, "status": "run", "passed": ok} for i, ok in cases]}  # fmt: skip
+    (folder / name).write_text(json.dumps(data))
+
+
+def test_status_rows_tell_current_partial_and_pending(tmp_path, monkeypatch):
+    monkeypatch.setattr(R, "prompt_version", lambda name: "new" if name in ("brief", "qa") else "cur")
+    _result(tmp_path, "2026-10-16-1500-brief.json", "brief", "old", [(i, True) for i in range(1, 7)])
+    _result(tmp_path, "2026-10-17-1500-brief-cases1-2.json", "brief", "new", [(1, True), (2, False)])
+    _result(tmp_path, "2026-10-17-1500-injection.json", "injection", "cur", [(i, True) for i in range(1, 8)])
+    _result(tmp_path, "2026-10-16-1500-qa.json", "qa", "old", [(i, True) for i in range(1, 13)])
+    rows = {r["set"]: r for r in R.status_rows(tmp_path)}
+    assert rows["brief"]["status"] == "partly rerun" and (rows["brief"]["on_current_run"], rows["brief"]["on_current_passed"]) == (2, 1)
+    assert rows["brief"]["last_full"] == {"date": "2026-10-16", "prompt": "old", "passed": 6, "cases": 6}
+    assert rows["injection"]["status"] == "current"
+    assert rows["qa"]["status"] == "rerun pending"
+    assert rows["extras"]["last_full"] is None
+    table = R.status_markdown(list(rows.values()))
+    assert "| brief | 6 | `new` | 2026-10-16, `old`: 6/6 | 1/2 run of 6 | partly rerun |" in table
+
+
+def test_summary_needs_no_ai(capsys):
+    assert R.main(["--summary"]) == 0
+    assert capsys.readouterr().out.startswith("| Set | Cases |")

@@ -1,0 +1,225 @@
+{
+  "set": "capture",
+  "started": "2026-10-21T14:43:52-07:00",
+  "finished": "2026-10-21T14:44:33-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "fa51415d",
+  "code_version": "408eef9",
+  "fixture": "base",
+  "summary": {
+    "cases": 5,
+    "run": 5,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "category": {
+      "correct": 5,
+      "of": 5,
+      "score": 1.0,
+      "target": 0.9,
+      "met": true
+    },
+    "deadline": {
+      "correct": 5,
+      "of": 5,
+      "score": 1.0,
+      "target": 0.9,
+      "met": true
+    },
+    "priority": {
+      "correct": 5,
+      "of": 5,
+      "score": 1.0,
+      "target": 0.8,
+      "met": true
+    },
+    "assumptions": {
+      "stated": 1,
+      "of": 1
+    },
+    "passed": 5
+  },
+  "cases": [
+    {
+      "id": 26,
+      "input": "mail the tax form, urgent, due Nov 2",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          "2026-11-02"
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Mail the tax form",
+        "category": "errands",
+        "priority": "high",
+        "deadline": "2026-11-02",
+        "assumptions": [
+          "Nov 2 = 2026-11-02 (Monday)",
+          "Category errands chosen since mailing is an errand",
+          "No duplicate found in existing tasks"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 4930,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 31,
+      "input": "call grandma before the end of the month",
+      "now": "2026-10-30T10:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          "2026-10-31"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Call grandma",
+        "description": "Call grandma before the end of the month.",
+        "category": "personal",
+        "priority": "medium",
+        "deadline": "2026-10-31",
+        "assumptions": [
+          "end of the month = 2026-10-31 (today is 2026-10-30 per the calendar)",
+          "Category 'personal' since it's a family call",
+          "No duplicate found in existing tasks",
+          "No duration given, so no estimate"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5941,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": true
+      },
+      "passed": true
+    },
+    {
+      "id": 32,
+      "input": "renew car registration, it expires soon!",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "errands",
+        "deadline": [
+          null
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Renew car registration",
+        "description": "Registration expires soon.",
+        "category": "errands",
+        "priority": "high",
+        "assumptions": [
+          "Priority high because 'expires soon' signals near-deadline urgency.",
+          "No deadline set: no date was given.",
+          "Category errands as the best fit.",
+          "No duplicate found in existing tasks."
+        ],
+        "clarifying_question": "What date does your car registration expire?"
+      },
+      "question": "What date does your car registration expire?",
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 9905,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 33,
+      "input": "book a doctor's appointment ASAP, my knee is getting worse",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "personal",
+        "deadline": [
+          null,
+          "2026-10-28"
+        ],
+        "priority": "high"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Book a doctor's appointment",
+        "description": "Knee is getting worse; book an appointment as soon as possible.",
+        "category": "personal",
+        "priority": "high",
+        "assumptions": [
+          "\"ASAP\" signals urgency, so priority is high.",
+          "No specific deadline given, so none set.",
+          "Category personal (health) is the closest fit.",
+          "No duplicate found in existing tasks (the 'Book flu shot' task is separate)."
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 7346,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    },
+    {
+      "id": 36,
+      "input": "renew my passport before the end of November",
+      "now": "2026-10-28T08:00:00-07:00",
+      "expected": {
+        "category": "other",
+        "deadline": [
+          "2026-11-30"
+        ],
+        "priority": "medium"
+      },
+      "status": "run",
+      "proposal": {
+        "title": "Renew passport",
+        "category": "other",
+        "priority": "medium",
+        "deadline": "2026-11-30",
+        "assumptions": [
+          "end of November = 2026-11-30",
+          "Category 'other' since shopping, job, plants don't fit",
+          "No duplicate passport task found",
+          "Priority medium: no urgency wording"
+        ]
+      },
+      "question": null,
+      "retries": 0,
+      "turns": 4,
+      "duration_ms": 5763,
+      "checks": {
+        "category": true,
+        "deadline": true,
+        "priority": true,
+        "assumptions": null
+      },
+      "passed": true
+    }
+  ]
+}

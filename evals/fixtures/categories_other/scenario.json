@@ -1,0 +1,8 @@
+{
+  "description": "Base, but the categories are only shopping, job, plants and \"other\": a task that fits none of the named ones goes to \"other\" (capture prompt rule added in M10).",
+  "extends": "base",
+  "now": "2026-10-28T08:00:00-07:00",
+  "tags": [
+    "category_other"
+  ]
+}

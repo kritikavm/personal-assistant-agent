@@ -44,6 +44,7 @@ from assistant.agent.tools import (  # noqa: E402
 )
 from assistant.flows.ask import AskOutcome, ask  # noqa: E402
 from assistant.flows.capture import capture  # noqa: E402
+from assistant.logging_setup import RunLog
 from assistant.flows.daily_run import RunResult, daily_run  # noqa: E402
 from assistant.planner import apply_diff, default_reminders, reconcile  # noqa: E402
 from assistant.state import RunStatus, SourceType, State, load_state, parse_marker, save_state  # noqa: E402
@@ -143,13 +144,16 @@ def code_version() -> str:
         return "unknown"
 
 
-def load_cases(name: str, case_id: int | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def load_cases(name: str, case_id: int | None = None, case_ids: list[int] | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     data = json.loads((CASES / name / "cases.json").read_text())
     cases = data["cases"]
-    if case_id is not None:
-        cases = [c for c in cases if c["id"] == case_id]
-        if not cases:
-            raise SystemExit(f"no case {case_id} in set {name}")
+    wanted = [case_id] if case_id is not None else case_ids
+    if wanted:
+        known = {c["id"] for c in cases}
+        missing = [i for i in wanted if i not in known]
+        if missing:
+            raise SystemExit(f"no case {', '.join(map(str, missing))} in set {name}")
+        cases = [c for c in cases if c["id"] in set(wanted)]
     return data, cases
 
 
@@ -167,7 +171,7 @@ async def run_capture(cases: list[dict[str, Any]], fixture: str) -> list[dict[st
             if stop:
                 results.append({**base, "status": "not_run", "reason": stop})
                 continue
-            snap = capture_snapshot(fixture, datetime.fromisoformat(case["now"]))
+            snap = capture_snapshot(case.get("fixture", fixture), datetime.fromisoformat(case["now"]))
             try:
                 outcome = await capture(case["input"], snap, cwd=Path(cwd), answer=None)
             except AgentFailure as e:
@@ -217,18 +221,26 @@ class DailyWorld:
         self.data = self.sc.write_data_dir(folder / f"case-{case['id']}")
         self.reminders = FakeReminders()
         self.notifier = FakeNotifier()
+        self.tool_calls: list[list[str]] = []  # per run: the tools Claude called, in order (from the log)
 
     async def run(self) -> RunResult:
-        return await daily_run(
-            self.data,
-            self.sc.preferences,
-            self.sc.now,
-            trigger="manual",
-            dry_run=False,
-            calendar=self.sc.calendar_client(),
-            reminders=self.reminders,
-            notifier=self.notifier,
-        )
+        with RunLog(self.data, "run.manual", self.sc.preferences.tz) as log:
+            result = await daily_run(
+                self.data,
+                self.sc.preferences,
+                self.sc.now,
+                trigger="manual",
+                dry_run=False,
+                calendar=self.sc.calendar_client(),
+                reminders=self.reminders,
+                notifier=self.notifier,
+                log=log,
+                clock=lambda: self.sc.now,  # fixtures are dated; never the real clock
+            )
+        run_id = log.run_id
+        events = [json.loads(line) for f in sorted((self.data / "logs").glob("*.jsonl")) for line in f.read_text().splitlines()]
+        self.tool_calls.append([e["tool"].removeprefix("mcp__pa__") for e in events if e.get("run_id") == run_id and e["event"] == "tool_allowed"])
+        return result
 
 
 def score_extras(case: dict[str, Any], result: RunResult) -> dict[str, bool | None]:
@@ -362,6 +374,7 @@ async def run_daily_set(set_name: str, cases: list[dict[str, Any]]) -> list[dict
                 "retries": sum(len(r.error_paths) for r in runs),
                 "turns": sum(r.session.num_turns for r in runs),
                 "duration_ms": sum(r.session.duration_ms for r in runs),
+                "tool_calls": world.tool_calls[-1] if world.tool_calls else [],
             }
             if set_name == "extras":
                 checks = score_extras(case, last)
@@ -771,14 +784,88 @@ async def run_failure(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return results
 
 
+# --- Status summary (README, EVALS §7) --------------------------------------------------------------------
+
+
+def status_rows(results_dir: Path = RESULTS) -> list[dict[str, Any]]:
+    """Per set: the last full run, and how many of today's cases have run on the set's current prompt.
+
+    Built only from the saved results files, so the summary can't drift from them. "Passed" is the
+    code's exact checks; checklist marks for text (EVALS §5.2) are recorded in EVALS §7.1.
+    """
+    rows = []
+    for name in SETS:
+        _, cases = load_cases(name)
+        ids = {c["id"] for c in cases}
+        current = prompt_version(name)
+        runs = []
+        for path in sorted(results_dir.glob("*.json")):
+            data = json.loads(path.read_text())
+            if data.get("set") == name:
+                runs.append((path.name, data))
+        full = [(n, d) for n, d in runs if "-case" not in n]
+        latest: dict[int, bool] = {}
+        for _, d in runs:
+            if d.get("prompt_version") == current:
+                for c in d["cases"]:
+                    if c.get("status") == "run" or "passed" in c:
+                        latest[c["id"]] = bool(c.get("passed"))
+        on_current = {i: ok for i, ok in latest.items() if i in ids}
+        last = full[-1] if full else None
+        row = {
+            "set": name,
+            "cases": len(ids),
+            "prompt": current,
+            "last_full": None,
+            "on_current_run": len(on_current),
+            "on_current_passed": sum(on_current.values()),
+        }
+        if last:
+            n, d = last
+            row["last_full"] = {
+                "date": d["started"][:10],
+                "prompt": d.get("prompt_version"),
+                "passed": sum(bool(c.get("passed")) for c in d["cases"]),
+                "cases": len(d["cases"]),
+            }
+        if len(on_current) == len(ids):
+            row["status"] = "current"
+        elif on_current:
+            row["status"] = "partly rerun"
+        else:
+            row["status"] = "rerun pending"
+        rows.append(row)
+    return rows
+
+
+def status_markdown(rows: list[dict[str, Any]]) -> str:
+    lines = [
+        "| Set | Cases | Current prompt | Last full run (exact checks) | On the current prompt | Status |",
+        "|---|---|---|---|---|---|",
+    ]
+    for r in rows:
+        f = r["last_full"]
+        full = f"{f['date']}, `{f['prompt']}`: {f['passed']}/{f['cases']}" if f else "none"
+        now = f"{r['on_current_passed']}/{r['on_current_run']} run of {r['cases']}" if r["on_current_run"] else f"0 of {r['cases']}"
+        lines.append(f"| {r['set']} | {r['cases']} | `{r['prompt']}` | {full} | {now} | {r['status']} |")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--set", choices=SETS, required=True)
+    parser.add_argument("--set", choices=SETS)
+    parser.add_argument("--summary", action="store_true", help="print the status table from evals/results/; no AI")
     parser.add_argument("--case", type=int)
+    parser.add_argument("--cases", type=lambda v: [int(x) for x in v.split(",")], help="several case IDs, e.g. 1,4,5,6")
     parser.add_argument("--dry-run", action="store_true", help="list the cases and how many sessions they'd use; no AI")
     args = parser.parse_args(argv)
+    if args.summary:
+        print(status_markdown(status_rows()))
+        return 0
+    if not args.set:
+        parser.error("--set is required (or use --summary)")
 
-    data, cases = load_cases(args.set, args.case)
+    data, cases = load_cases(args.set, args.case, args.cases)
     if args.dry_run:
         sessions = 0
         for c in cases:
@@ -824,7 +911,8 @@ def main(argv: list[str] | None = None) -> int:
         "cases": results,
     }
     RESULTS.mkdir(exist_ok=True)
-    path = RESULTS / f"{started:%Y-%m-%d-%H%M}-{args.set}{'-case' + str(args.case) if args.case else ''}.json"
+    picked = f"-case{args.case}" if args.case else (f"-cases{'-'.join(map(str, args.cases))}" if args.cases else "")
+    path = RESULTS / f"{started:%Y-%m-%d-%H%M}-{args.set}{picked}.json"
     path.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps(summary, indent=2))
     print(f"Saved {path.relative_to(ROOT)}")

@@ -365,6 +365,10 @@ def check_extras_cap(s):
     assert len(interviews) == 2  # two items that each deserve an extra, so the cap matters
 
 
+def check_category_other(s):
+    assert s.preferences.categories == ["shopping", "job", "plants", "other"]
+
+
 def check_routine(s):
     assert window(s).events and not any("interview" in e.title.lower() or e.all_day for e in window(s).events)
     assert {t["priority"] for t in s.tasks} <= {"low", "medium"}
@@ -389,6 +393,7 @@ EDGE_CASES = {
     "extras_off": check_extras_off,
     "extras_cap": check_extras_cap,
     "routine": check_routine,
+    "category_other": check_category_other,
 }
 
 

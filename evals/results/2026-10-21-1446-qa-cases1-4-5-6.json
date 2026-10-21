@@ -1,0 +1,304 @@
+{
+  "set": "qa",
+  "started": "2026-10-21T14:46:16-07:00",
+  "finished": "2026-10-21T14:47:28-07:00",
+  "model": "claude-sonnet-5-5",
+  "prompt_version": "6577809a",
+  "code_version": "408eef9",
+  "fixture": "per case",
+  "summary": {
+    "cases": 4,
+    "run": 4,
+    "not_run": 0,
+    "failed_sessions": 0,
+    "passed": 4,
+    "target": "12/12 correct with citations (exact checks, then my checklist marks)",
+    "exact_checks_passed": 4,
+    "met": null
+  },
+  "cases": [
+    {
+      "id": 1,
+      "type": "day",
+      "fixture": "base",
+      "now": "2026-10-28T08:00:00-07:00",
+      "question": "What does my day look like?",
+      "expected": {
+        "events": [
+          "evt001",
+          "evt002",
+          "evt003",
+          "evt004"
+        ]
+      },
+      "status": "run",
+      "answer": "You have four events today:\n- 09:00–10:00 Weekly team sync (Room Fern)\n- 10:00–11:00 Design review\n- 12:00–13:00 Lunch with Sam Rivera (Cafe Example, 1 Sample St)\n- 15:30–16:15 Dentist appointment (Example Dental)\n\nYour free blocks are 11:00–12:00, 13:00–15:30 and 16:15–18:00.",
+      "sources": [
+        {
+          "type": "event",
+          "id": "evt001"
+        },
+        {
+          "type": "event",
+          "id": "evt002"
+        },
+        {
+          "type": "event",
+          "id": "evt003"
+        },
+        {
+          "type": "event",
+          "id": "evt004"
+        }
+      ],
+      "data_gaps": [],
+      "changes": [],
+      "retries": 0,
+      "change_retries": 0,
+      "turns": 4,
+      "duration_ms": 30356,
+      "checks": {
+        "events_exact": true,
+        "changes": true,
+        "times_known": true,
+        "calendar_gap_said": null,
+        "unknown_times": []
+      },
+      "passed": true,
+      "checklist": {
+        "grounded": null,
+        "cites_sources": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "answers_question": null
+      }
+    },
+    {
+      "id": 4,
+      "type": "focus",
+      "fixture": "base",
+      "now": "2026-10-28T08:00:00-07:00",
+      "question": "What should I focus on today?",
+      "expected": {
+        "must_cite": [
+          "t-0101"
+        ]
+      },
+      "status": "run",
+      "answer": "Here's what to focus on today, in order:\n\n1. Submit expense report: high priority, due 17:00. It takes 30 minutes, so you could do it in the 11:00–12:00 gap.\n2. Buy birthday card for Alex: due today. It has no time or length listed, so it could go in the 16:15–18:00 block.\n3. Repot the monstera: overdue (due 2026-10-21, medium priority). It takes 45 minutes, so you could do it in the 16:15–18:00 block.\n4. Renew library books: overdue (due 2026-10-27, low priority).\n5. Due soon:\n   - Send rent payment: high priority, due tomorrow at 07:30, so it's worth doing today.\n   - Prepare interview questions: in progress, due tomorrow at 12:00. It needs 90 minutes, so you could use the 13:00–15:30 block.\n\nYour meetings today are the Weekly team sync (09:00–10:00), Design review (10:00–11:00), Lunch with Sam Rivera (12:00–13:00) and the Dentist appointment (15:30–16:15).",
+      "sources": [
+        {
+          "type": "task",
+          "id": "t-0101"
+        },
+        {
+          "type": "task",
+          "id": "t-0102"
+        },
+        {
+          "type": "task",
+          "id": "t-0104"
+        },
+        {
+          "type": "task",
+          "id": "t-0103"
+        },
+        {
+          "type": "task",
+          "id": "t-0111"
+        },
+        {
+          "type": "task",
+          "id": "t-0105"
+        },
+        {
+          "type": "event",
+          "id": "evt001"
+        },
+        {
+          "type": "event",
+          "id": "evt002"
+        },
+        {
+          "type": "event",
+          "id": "evt003"
+        },
+        {
+          "type": "event",
+          "id": "evt004"
+        }
+      ],
+      "data_gaps": [],
+      "changes": [],
+      "retries": 0,
+      "change_retries": 0,
+      "turns": 5,
+      "duration_ms": 15493,
+      "checks": {
+        "must_cite": true,
+        "changes": true,
+        "times_known": true,
+        "calendar_gap_said": null,
+        "unknown_times": []
+      },
+      "passed": true,
+      "checklist": {
+        "grounded": null,
+        "cites_sources": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "answers_question": null
+      }
+    },
+    {
+      "id": 5,
+      "type": "focus",
+      "fixture": "base",
+      "now": "2026-10-29T08:00:00-07:00",
+      "question": "What should I prioritize today?",
+      "expected": {
+        "must_cite": [
+          "t-0101",
+          "t-0111",
+          "t-0105"
+        ]
+      },
+      "status": "run",
+      "answer": "Today's calendar is fully booked from 09:00 to 18:00, so there is no free block. Any of this work has to happen now, before 09:00, or outside working hours.\n\n1. Submit expense report (high, overdue since 28 Oct 17:00). It takes about 30 minutes.\n2. Send rent payment (high). It was due at 07:30 this morning, so it is now overdue.\n3. Prepare interview questions (high, due 12:00 today, in progress). It takes about 90 minutes. Your Quarterly planning workshop runs 09:00–12:00, so it can't fit in a free block. The Interview: Senior Analyst role starts at 13:00.\n4. Other overdue tasks, medium priority first and oldest first:\n   - Repot the monstera (medium, was due 21 Oct)\n   - Buy birthday card for Alex (medium, was due 28 Oct)\n   - Renew library books (low, was due 27 Oct)\n\nDue soon: Pick up dry cleaning is due tomorrow at 18:00. Call insurance about claim is due 2 Nov at 10:00.",
+      "sources": [
+        {
+          "type": "task",
+          "id": "t-0101"
+        },
+        {
+          "type": "task",
+          "id": "t-0111"
+        },
+        {
+          "type": "task",
+          "id": "t-0105"
+        },
+        {
+          "type": "task",
+          "id": "t-0104"
+        },
+        {
+          "type": "task",
+          "id": "t-0102"
+        },
+        {
+          "type": "task",
+          "id": "t-0103"
+        },
+        {
+          "type": "task",
+          "id": "t-0106"
+        },
+        {
+          "type": "task",
+          "id": "t-0107"
+        },
+        {
+          "type": "event",
+          "id": "evt005"
+        },
+        {
+          "type": "event",
+          "id": "evt007"
+        }
+      ],
+      "data_gaps": [],
+      "changes": [],
+      "retries": 0,
+      "change_retries": 0,
+      "turns": 5,
+      "duration_ms": 12364,
+      "checks": {
+        "must_cite": true,
+        "changes": true,
+        "times_known": true,
+        "calendar_gap_said": null,
+        "unknown_times": []
+      },
+      "passed": true,
+      "checklist": {
+        "grounded": null,
+        "cites_sources": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "answers_question": null
+      }
+    },
+    {
+      "id": 6,
+      "type": "focus",
+      "fixture": "calendar_outage",
+      "now": "2026-10-28T08:00:00-07:00",
+      "question": "What should I focus on today?",
+      "expected": {
+        "must_cite": [
+          "t-0101"
+        ]
+      },
+      "status": "run",
+      "answer": "Here's what to focus on today, in order. Your calendar is unavailable, so I don't know your events or free time.\n\n1. Submit expense report. It's high priority and due today at 17:00 (about 30 minutes).\n2. Buy birthday card for Alex. It's due today.\n3. Repot the monstera. It's overdue (due 2026-10-21) and medium priority (about 45 minutes).\n4. Renew library books. It's overdue (due 2026-10-27) and low priority.\n5. Due soon:\n   - Send rent payment: high priority, due tomorrow at 07:30.\n   - Prepare interview questions: high priority, due tomorrow at 12:00 (about 90 minutes, already in progress).\n   - Pick up dry cleaning: due 2026-10-30 at 18:00.\n   - Call insurance about claim: high priority, due 2026-11-02 at 10:00.\n\nBecause the rent payment is due early tomorrow, you may want to send it today.",
+      "sources": [
+        {
+          "type": "task",
+          "id": "t-0101"
+        },
+        {
+          "type": "task",
+          "id": "t-0102"
+        },
+        {
+          "type": "task",
+          "id": "t-0104"
+        },
+        {
+          "type": "task",
+          "id": "t-0103"
+        },
+        {
+          "type": "task",
+          "id": "t-0111"
+        },
+        {
+          "type": "task",
+          "id": "t-0105"
+        },
+        {
+          "type": "task",
+          "id": "t-0106"
+        },
+        {
+          "type": "task",
+          "id": "t-0107"
+        }
+      ],
+      "data_gaps": [
+        "Calendar data is missing: The calendar couldn't be reached or its login expired (run `assistant auth google` if this continues). Events, birthdays and free time aren't included."
+      ],
+      "changes": [],
+      "retries": 0,
+      "change_retries": 0,
+      "turns": 5,
+      "duration_ms": 10678,
+      "checks": {
+        "must_cite": true,
+        "changes": true,
+        "times_known": true,
+        "calendar_gap_said": true,
+        "unknown_times": []
+      },
+      "passed": true,
+      "checklist": {
+        "grounded": null,
+        "cites_sources": null,
+        "no_invented": null,
+        "data_gaps": null,
+        "answers_question": null
+      }
+    }
+  ]
+}
