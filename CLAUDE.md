@@ -97,7 +97,8 @@ A local personal assistant agent for one user on one Mac, built with the Claude 
 - **M15 · Scheduling with launchd** built (2026-10-21), verified and approved by the user: plist template + `schedule install/uninstall`, `doctor` schedule line, `launchd.err` pre-created 600, runs delete their own past brief items, brief items always written at least 1 min ahead. Live: kickstart under launchd ok (Keychain, Reminders, Claude), second kickstart skipped with no session, catch-up after sleep ok (ran in background dark wakes). pytest 803 + 1 skipped.
 
 **Next step**
-- Publishing: the GitHub steps, one at a time (nothing pushed yet). Marker format is a Phase 2 item (PRD §11). Then M16 · full eval rerun.
+- **V1 published** (2026-10-22): https://github.com/kritikavm/personal-assistant-agent (public).
+- Next: demo video (`docs/demo.md`, fixtures only) · 7-day live validation (`docs/validation.md`) · full eval rerun (M16, 72 sessions; ask first) · CI (pytest + gitleaks on GitHub Actions). Marker format is a Phase 2 item (PRD §11).
 
 ## Open issues / verify during build
 

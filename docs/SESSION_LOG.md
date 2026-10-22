@@ -4,6 +4,13 @@ Newest entry at the top. No secrets, tokens or personal data.
 
 ---
 
+## 2026-10-22 · V1 published
+
+- Added the GitHub remote; the user pushed `main` (37 commits, gitleaks pre-push clean) to https://github.com/kritikavm/personal-assistant-agent and made the repository public. README and Mermaid diagram render; no `data/` in the repo.
+- Next: a demo video (from `docs/demo.md`, fixtures only), the 7-day live validation (`docs/validation.md`), the full eval rerun (M16, 72 sessions), and CI (GitHub Actions: pytest + gitleaks).
+
+---
+
 ## 2026-10-21 · Release audit fixes and final eval check (nothing pushed)
 
 - The user's decisions on the release audit: email stays in commits, name stays in injection case 7, no LICENSE, no CI for now.
